@@ -44,18 +44,18 @@
             </div>
         </div>
 
-        <iframe id="tab-pinyin" class="tab-content" src="tim-pinyin.html"></iframe>
-        <iframe id="tab-muc-tieu" class="tab-content" src="tim-tu-muc-tieu.html"></iframe>
-        <iframe id="tab-noi-tu" class="tab-content" src="noi-tu.html"></iframe>
-        <iframe id="tab-flashcard" class="tab-content" src="Tao-FC.html"></iframe>
-        <iframe id="tab-sap-xep" class="tab-content" src="sap-xep-cau.html"></iframe>
+        <iframe id="tab-pinyin" class="tab-content" src="./tim-pinyin.html"></iframe>
+        <iframe id="tab-muc-tieu" class="tab-content" src="./tim-tu-muc-tieu.html"></iframe>
+        <iframe id="tab-noi-tu" class="tab-content" src="./noi-tu.html"></iframe>
+        <iframe id="tab-flashcard" class="tab-content" src="./Tao-FC.html"></iframe>
+        <iframe id="tab-sap-xep" class="tab-content" src="./sap-xep-cau.html"></iframe>
     </main>
 
     <script>
         const DEFAULT_REPOS = [
             { id: 'hsk1', name: 'HSK 1 - Cơ Bản', vocab: "你好\n老师\n学生\n中国\n越南\n朋友\n再见\n谢谢\n高兴\n学习" },
             { id: 'hsk2', name: 'HSK 2 - Động Từ', vocab: "看:kàn\n听:tīng\n读:dú\n写:xiě\n走:zǒu\n跑:pǎo\n跳:tiào\n喝:hē\n吃:chī\n玩:wán" },
-            { id: 'sentences', name: 'Mẫu Câu Sắp Xếp', vocab: "花园里有一只漂亮的蝴蝶\n消灭所有怪物后才能过关\n我不瞒你说，这件事情 me 很简单" }
+            { id: 'sentences', name: 'Mẫu Câu Sắp Xếp', vocab: "花园里有一只漂亮的蝴蝶\n消灭所有怪物后才能过关\n我不瞒你说，这件事情很简单" }
         ];
 
         let repositories = JSON.parse(localStorage.getItem('zh_vocab_repos')) || DEFAULT_REPOS;
@@ -91,13 +91,17 @@
             listEl.innerHTML = repositories.map(r => `
                 <div class="bg-white border ${r.id === activeRepoId ? 'border-2 border-blue-600 shadow-md' : 'border-slate-300'} rounded-xl p-4 flex flex-col justify-between">
                     <div>
-                        <div class="flex justify-between items-start mb-2">
-                            <h3 class="font-bold text-slate-800 text-sm">${r.name}</h3>
-                            ${r.id === activeRepoId ? '<span class="bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">ĐANG DÙNG</span>' : ''}
+                        <div class="flex justify-between items-center mb-2 gap-2">
+                            <h3 class="font-bold text-slate-800 text-sm truncate flex-1" title="${r.name}">${r.name}</h3>
+                            <div class="flex items-center gap-1">
+                                <button onclick="renameRepo('${r.id}')" title="Sửa tên kho" class="p-1 hover:bg-slate-100 text-slate-600 rounded text-xs">✏️</button>
+                                ${repositories.length > 1 ? `<button onclick="deleteRepo('${r.id}')" title="Xóa kho" class="p-1 hover:bg-red-50 text-red-500 rounded text-xs">🗑️️</button>` : ''}
+                            </div>
                         </div>
+                        ${r.id === activeRepoId ? '<span class="inline-block mb-2 bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">ĐANG DÙNG</span>' : ''}
                         <textarea onchange="updateRepoVocab('${r.id}', this.value)" class="w-full h-28 p-2 text-xs border border-slate-300 rounded resize-none focus:outline-none focus:border-blue-500">${r.vocab}</textarea>
                     </div>
-                    <button onclick="applyRepo('${r.id}')" class="mt-3 w-full py-1.5 bg-blue-600 text-white text-xs font-bold rounded hover:bg-blue-700">🚀 Áp Dụng Kho Này</button>
+                    <button onclick="applyRepo('${r.id}')" class="mt-3 w-full py-1.5 bg-blue-600 text-white text-xs font-bold rounded hover:bg-blue-700 transition">🚀 Áp Dụng Kho Này</button>
                 </div>
             `).join('');
         }
@@ -105,6 +109,32 @@
         function updateRepoVocab(id, val) {
             const r = repositories.find(item => item.id === id);
             if (r) { r.vocab = val; saveState(); }
+        }
+
+        function renameRepo(id) {
+            const r = repositories.find(item => item.id === id);
+            if (!r) return;
+            const newName = prompt("Nhập tên mới cho kho từ vựng:", r.name);
+            if (newName && newName.trim() !== '') {
+                r.name = newName.trim();
+                saveState();
+                renderRepoManager();
+            }
+        }
+
+        function deleteRepo(id) {
+            if (repositories.length <= 1) {
+                alert("Bạn không thể xóa kho từ vựng cuối cùng!");
+                return;
+            }
+            if (confirm("Bạn có chắc chắn muốn xóa kho từ vựng này?")) {
+                repositories = repositories.filter(r => r.id !== id);
+                if (activeRepoId === id) {
+                    activeRepoId = repositories[0].id;
+                }
+                saveState();
+                renderRepoManager();
+            }
         }
 
         function applyRepo(id) {
@@ -116,9 +146,9 @@
 
         function addNewRepo() {
             const name = prompt("Nhập tên kho mới:");
-            if (!name) return;
+            if (!name || name.trim() === '') return;
             const newId = 'repo_' + Date.now();
-            repositories.push({ id: newId, name, vocab: "你好\n谢谢" });
+            repositories.push({ id: newId, name: name.trim(), vocab: "你好\n谢谢" });
             activeRepoId = newId;
             saveState();
             renderRepoManager();
