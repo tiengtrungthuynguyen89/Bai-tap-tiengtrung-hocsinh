@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Công Cụ Tạo Phiếu Bài Tập Tìm Chữ Mục Tiêu</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@500;700;900&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Thư viện LZString nén Link -->
+    <script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
+    <!-- Thư viện Bắn pháo hoa Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <style>
+        :root {
+            --sidebar-width: 380px;
+        }
+
+        body {
+            font-family: 'Noto Serif SC', 'KaiTi', 'STKaiti', serif, sans-serif;
+            background-color: #f1f5f9;
+            color: #1e293b;
+        }
+
+        .sidebar-container {
+            width: var(--sidebar-width);
+            height: 100vh;
+            position: fixed;
+            left: 0;
+            top: 0;
+            background: #ffffff;
+            border-right: 1px solid #e2e8f0;
+            overflow-y: auto;
+            z-index: 50;
+            box-shadow: 4px 0 15px rgba(0,0,0,0.05);
+        }
+
+        .preview-container {
+            margin-left: var(--sidebar-width);
+            padding: 30px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .a4-page {
+            width: 210mm;
+            height: 297mm;
+            background: #ffffff;
+            padding: 10mm 12mm;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 25px;
+            box-sizing: border-box;
+            display: grid;
+            gap: 12px;
+            align-content: start;
+            page-break-after: always;
+            position: relative;
+        }
+
+        .quiz-card {
+            border: 1.5px dashed #64748b;
+            border-radius: 12px;
+            position: relative;
+            background: #ffffff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 8px;
+            overflow: hidden;
+            box-sizing: border-box;
+            transition: border-color 0.3s;
+        }
+
+        .quiz-card.completed {
+            border: 2px solid #22c55e !important;
+            background-color: #f0fdf4 !important;
+        }
+
+        .quiz-instruction {
+            font-size: 13pt;
+            font-weight: 600;
+            color: #1e293b;
+            text-align: center;
+            margin-bottom: 4px;
+            letter-spacing: 0.5px;
+            z-index: 10;
+        }
+
+        .quiz-canvas {
+            position: relative;
+            width: 100%;
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .target-center-word {
+            position: absolute;
+            font-weight: 900;
+            color: #000000;
+            line-height: 1;
+            user-select: none;
+            z-index: 5;
+            text-align: center;
+        }
+
+        .bubble-item {
+            position: absolute;
+            border: 1.5px solid #1e293b;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #ffffff;
+            color: #000000;
+            font-weight: 600;
+            box-sizing: border-box;
+            user-select: none;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+            overflow: hidden;
+            text-align: center;
+            padding: 1px;
+            line-height: 1;
+        }
+
+        .bubble-item.selected {
+            background-color: #8b5cf6 !important;
+            color: #ffffff !important;
+            border-color: #6d28d9 !important;
+            transform: translate(-50%, -50%) scale(1.1);
+        }
+
+        body.student-mode .sidebar-container {
+            display: none !important;
+        }
+
+        body.student-mode .preview-container {
+            margin-left: 0 !important;
+            padding: 10px !important;
+            width: 100vw !important;
+        }
+
+        @media print {
+            body { background: #ffffff !important; }
+            .sidebar-container { display: none !important; }
+            .preview-container { margin-left: 0 !important; padding: 0 !important; }
+            .a4-page {
+                box-shadow: none !important;
+                margin: 0 !important;
+                width: 210mm !important;
+                height: 297mm !important;
+                border: none !important;
+                page-break-after: always !important;
+            }
+            .bubble-item.selected {
+                background-color: #ffffff !important;
+                color: #000000 !important;
+                border-color: #1e293b !important;
+                transform: translate(-50%, -50%) !important;
+            }
+            @page { size: A4 portrait; margin: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- SIDEBAR BẢNG ĐIỀU KHIỂN -->
+    <div class="sidebar-container p-5 text-slate-800">
+        <div class="flex items-center gap-2 mb-4 pb-3 border-b border-slate-200">
+            <svg class="w-7 h-7 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+            </svg>
+            <h1 class="text-xl font-bold text-slate-900">Tạo Phiếu Tìm Từ</h1>
+        </div>
+
+        <div class="space-y-4">
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                    Kho từ vựng gốc (mỗi từ 1 dòng):
+                </label>
+                <textarea id="vocabInput" rows="5" class="w-full p-2.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 font-serif" placeholder="Nhập chữ/từ..."></textarea>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                    Mẫu câu hướng dẫn:
+                </label>
+                <input type="text" id="instructionTemplate" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value='Tìm ra chữ "{word}" '>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Số đề / A4:</label>
+                    <select id="itemsPerPage" class="w-full p-2 border border-slate-300 rounded-lg text-sm bg-white">
+                        <option value="4">4 đề (2x2)</option>
+                        <option value="6" selected>6 đề (2x3)</option>
+                        <option value="8">8 đề (2x4)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Font chữ:</label>
+                    <select id="fontFamily" class="w-full p-2 border border-slate-300 rounded-lg text-sm bg-white">
+                        <option value="'Noto Serif SC', 'KaiTi', serif">KaiTi / 楷体 (Tiếng Trung)</option>
+                        <option value="'Ma Shan Zheng', cursive">Ma Shan Zheng (Thư pháp)</option>
+                        <option value="'Times New Roman', serif">Times New Roman</option>
+                        <option value="'Roboto', sans-serif">Roboto / Arial</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Số bong bóng:</label>
+                    <input type="number" id="bubbleCount" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="18" min="8" max="30">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Số đáp án đúng:</label>
+                    <input type="number" id="targetRepeatCount" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="4" min="1" max="10">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-2">
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-700 mb-1">Cỡ tâm (px):</label>
+                    <input type="number" id="centerFontSize" class="w-full p-1.5 border border-slate-300 rounded-lg text-sm" value="85">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-700 mb-1">Đường kính (px):</label>
+                    <input type="number" id="bubbleSize" class="w-full p-1.5 border border-slate-300 rounded-lg text-sm" value="38">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-700 mb-1">Cỡ nhiễu (px):</label>
+                    <input type="number" id="bubbleFontSize" class="w-full p-1.5 border border-slate-300 rounded-lg text-sm" value="20">
+                </div>
+            </div>
+
+            <div class="pt-3 space-y-2">
+                <button onclick="generateSheet(true)" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-md transition-all">
+                    Tạo Đề Tự Động
+                </button>
+                <button onclick="generateShareLink()" class="w-full py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-lg shadow-md transition-all">
+                    🔗 Tạo & Sao Chép Link Học Sinh
+                </button>
+                <button onclick="window.print()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow-md transition-all">
+                    In / Xuất PDF
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PREVIEW AREA -->
+    <div class="preview-container" id="previewArea"></div>
+
+    <script>
+        const defaultChineseVocab = ["读", "听", "说", "写", "看", "走", "跑", "跳", "喝", "吃", "玩", "画", "唱", "笑"];
+        let generatedState = [];
+
+        function calculateBubblePositions(count) {
+            const positions = [];
+            const ring1Capacity = Math.min(8, Math.floor(count * 0.4));
+            const ring2Capacity = count - ring1Capacity;
+            const r1X = 28, r1Y = 26;
+            const r2X = 42, r2Y = 38;
+            const startAngle1 = Math.random() * Math.PI * 2;
+            const startAngle2 = Math.random() * Math.PI * 2;
+
+            for (let i = 0; i < ring1Capacity; i++) {
+                const angle = startAngle1 + (i * (2 * Math.PI / ring1Capacity)) + ((Math.random() - 0.5) * 0.2);
+                positions.push({ x: (50 + r1X * Math.cos(angle)).toFixed(2), y: (50 + r1Y * Math.sin(angle)).toFixed(2) });
+            }
+            for (let i = 0; i < ring2Capacity; i++) {
+                const angle = startAngle2 + (i * (2 * Math.PI / ring2Capacity)) + ((Math.random() - 0.5) * 0.2);
+                positions.push({ x: (50 + r2X * Math.cos(angle)).toFixed(2), y: (50 + r2Y * Math.sin(angle)).toFixed(2) });
+            }
+            return positions;
+        }
+
+        function triggerFireworks() {
+            if (typeof confetti === 'function') {
+                confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+            }
+        }
+
+        // HÀM BÓC TÁCH CHỮ HÁN TỪ CHUỖI NHẬP VÀO
+        function extractChineseWord(str) {
+            if (!str) return '';
+            let clean = str.replace(/^\[[xX✓]\]\s*/, '').trim();
+            if (clean.includes(':')) clean = clean.split(':')[0].trim();
+            if (clean.includes('：')) clean = clean.split('：')[0].trim();
+            return clean;
+        }
+
+        function generateSheet(createNewState = true) {
+            const rawText = document.getElementById('vocabInput').value;
+            const vocabList = rawText.split(/[\n,]+/)
+                .map(s => extractChineseWord(s))
+                .filter(s => s.length > 0);
+
+            if (vocabList.length === 0) {
+                alert("Vui lòng nhập ít nhất 1 từ vựng vào kho từ!");
+                return;
+            }
+
+            const instructionTemplate = document.getElementById('instructionTemplate').value || 'Tìm ra chữ "{word}" ';
+            const itemsPerPage = parseInt(document.getElementById('itemsPerPage').value);
+            const fontFamily = document.getElementById('fontFamily').value;
+            const bubbleCount = parseInt(document.getElementById('bubbleCount').value);
+            const targetRepeatCount = parseInt(document.getElementById('targetRepeatCount').value);
+
+            const centerFontSize = parseInt(document.getElementById('centerFontSize').value);
+            const bubbleSize = parseInt(document.getElementById('bubbleSize').value);
+            const userBubbleFontSize = parseInt(document.getElementById('bubbleFontSize').value);
+
+            const previewArea = document.getElementById('previewArea');
+            previewArea.innerHTML = "";
+
+            if (createNewState) {
+                generatedState = [];
+                vocabList.forEach((targetWord) => {
+                    let bubbleWords = [];
+                    const actualRepeat = Math.min(targetRepeatCount, bubbleCount);
+                    
+                    // 1. Nạp chính xác N đáp án đúng
+                    for (let i = 0; i < actualRepeat; i++) {
+                        bubbleWords.push(targetWord);
+                    }
+
+                    // 2. Lọc danh sách từ nhiễu (TUYỆT ĐỐI KHÔNG TRÙNG VỚI TỪ MỤC TIÊU)
+                    const distractorPool = vocabList.filter(w => w !== targetWord);
+                    
+                    // 3. Điền cho đủ tổng số bong bóng
+                    while (bubbleWords.length < bubbleCount) {
+                        if (distractorPool.length > 0) {
+                            const randomDistractor = distractorPool[Math.floor(Math.random() * distractorPool.length)];
+                            bubbleWords.push(randomDistractor);
+                        } else {
+                            bubbleWords.push("字"); // Trường hợp kho từ quá ít
+                        }
+                    }
+
+                    bubbleWords.sort(() => Math.random() - 0.5);
+                    const positions = calculateBubblePositions(bubbleWords.length);
+
+                    const items = bubbleWords.map((word, idx) => ({
+                        word: word,
+                        isTarget: (word === targetWord),
+                        x: positions[idx].x,
+                        y: positions[idx].y
+                    }));
+
+                    generatedState.push({
+                        targetWord,
+                        targetRepeatCount: actualRepeat,
+                        items
+                    });
+                });
+            }
+
+            let currentPage = null;
+
+            generatedState.forEach((quizData, index) => {
+                if (index % itemsPerPage === 0) {
+                    currentPage = document.createElement('div');
+                    currentPage.className = 'a4-page';
+                    if (itemsPerPage === 4) {
+                        currentPage.style.gridTemplateColumns = 'repeat(2, 1fr)';
+                        currentPage.style.gridTemplateRows = 'repeat(2, 1fr)';
+                    } else if (itemsPerPage === 6) {
+                        currentPage.style.gridTemplateColumns = 'repeat(2, 1fr)';
+                        currentPage.style.gridTemplateRows = 'repeat(3, 1fr)';
+                    } else if (itemsPerPage === 8) {
+                        currentPage.style.gridTemplateColumns = 'repeat(2, 1fr)';
+                        currentPage.style.gridTemplateRows = 'repeat(4, 1fr)';
+                    }
+                    previewArea.appendChild(currentPage);
+                }
+
+                const quizCard = document.createElement('div');
+                quizCard.className = 'quiz-card';
+                quizCard.style.fontFamily = fontFamily;
+
+                const instructionDiv = document.createElement('div');
+                instructionDiv.className = 'quiz-instruction';
+                instructionDiv.innerText = instructionTemplate.replace(/{word}/g, quizData.targetWord);
+                quizCard.appendChild(instructionDiv);
+
+                const canvasDiv = document.createElement('div');
+                canvasDiv.className = 'quiz-canvas';
+
+                const centerWordDiv = document.createElement('div');
+                centerWordDiv.className = 'target-center-word';
+                centerWordDiv.style.fontSize = centerFontSize + 'px';
+                centerWordDiv.innerText = quizData.targetWord;
+                canvasDiv.appendChild(centerWordDiv);
+
+                quizData.items.forEach((item) => {
+                    const bubble = document.createElement('div');
+                    bubble.className = 'bubble-item';
+                    bubble.style.width = bubbleSize + 'px';
+                    bubble.style.height = bubbleSize + 'px';
+                    if (item.isTarget) bubble.dataset.isTarget = "true";
+
+                    const textLen = item.word.length;
+                    let calculatedFontSize = userBubbleFontSize;
+                    if (textLen === 1) calculatedFontSize = Math.min(userBubbleFontSize, Math.floor(bubbleSize * 0.55));
+                    else if (textLen === 2) calculatedFontSize = Math.min(userBubbleFontSize, Math.floor(bubbleSize * 0.42));
+                    else calculatedFontSize = Math.min(userBubbleFontSize, Math.floor(bubbleSize * 0.3));
+
+                    bubble.style.fontSize = calculatedFontSize + 'px';
+                    bubble.innerText = item.word;
+
+                    // TƯƠNG TÁC LÀM BÀI VÀ BẮN PHÁO HOA KHI HOÀN THÀNH
+                    bubble.onclick = function() {
+                        this.classList.toggle('selected');
+
+                        // Kiểm tra tiến độ khung đề này
+                        const correctSelected = canvasDiv.querySelectorAll('.bubble-item.selected[data-is-target="true"]').length;
+                        const totalSelected = canvasDiv.querySelectorAll('.bubble-item.selected').length;
+
+                        if (correctSelected === quizData.targetRepeatCount && totalSelected === quizData.targetRepeatCount) {
+                            quizCard.classList.add('completed');
+                            triggerFireworks();
+                        } else {
+                            quizCard.classList.remove('completed');
+                        }
+                    };
+
+                    bubble.style.left = item.x + '%';
+                    bubble.style.top = item.y + '%';
+                    canvasDiv.appendChild(bubble);
+                });
+
+                quizCard.appendChild(canvasDiv);
+                currentPage.appendChild(quizCard);
+            });
+        }
+
+        function generateShareLink() {
+            if (generatedState.length === 0) {
+                alert("Vui lòng tạo đề trước khi chia sẻ link!");
+                return;
+            }
+
+            const rawText = document.getElementById('vocabInput').value;
+            const instructionTemplate = document.getElementById('instructionTemplate').value;
+            const itemsPerPage = document.getElementById('itemsPerPage').value;
+            const fontFamily = document.getElementById('fontFamily').value;
+            const bubbleCount = document.getElementById('bubbleCount').value;
+            const targetRepeatCount = document.getElementById('targetRepeatCount').value;
+            const centerFontSize = document.getElementById('centerFontSize').value;
+            const bubbleSize = document.getElementById('bubbleSize').value;
+            const bubbleFontSize = document.getElementById('bubbleFontSize').value;
+
+            const fullData = {
+                vocabInput: rawText, instructionTemplate, itemsPerPage, fontFamily,
+                bubbleCount, targetRepeatCount, centerFontSize, bubbleSize, bubbleFontSize,
+                state: generatedState
+            };
+
+            if (typeof LZString !== 'undefined') {
+                const compressed = LZString.compressToEncodedURIComponent(JSON.stringify(fullData));
+                const baseUrl = window.location.href.split('?')[0];
+                const studentUrl = `${baseUrl}?z=${compressed}&s=1`;
+
+                if (navigator.clipboard) {
+                    navigator.clipboard.writeText(studentUrl).then(() => {
+                        alert("✅ ĐÃ SAO CHÉP LINK BÀI TẬP HỌC SINH!");
+                    });
+                } else {
+                    prompt("Sao chép link bên dưới:", studentUrl);
+                }
+            }
+        }
+
+        // HÀM TỰ ĐỘNG ĐỌC KHO TỪ VỰNG TỔNG
+        function loadVocabFromRepository() {
+            try {
+                // 1. Thử lấy từ kho từ vựng chung dạng JSON
+                const repoData = localStorage.getItem('zh_vocab_repository');
+                if (repoData) {
+                    const parsed = JSON.parse(repoData);
+                    let selectedItems = [];
+
+                    if (Array.isArray(parsed)) {
+                        selectedItems = parsed.filter(item => item.selected !== false);
+                    } else if (typeof parsed === 'object') {
+                        const items = parsed.items || parsed.words || [];
+                        selectedItems = items.filter(item => item.selected !== false);
+                    }
+
+                    if (selectedItems.length > 0) {
+                        const formattedLines = selectedItems.map(item => {
+                            return item.word || item.chinese || item.text || '';
+                        }).filter(line => line.trim().length > 0);
+
+                        if (formattedLines.length > 0) {
+                            return formattedLines.join('\n');
+                        }
+                    }
+                }
+
+                // 2. Dự phòng: Đọc chuỗi văn bản active vocab
+                const activeVocab = localStorage.getItem('zh_active_vocab');
+                if (activeVocab && activeVocab.trim() !== "") {
+                    const lines = activeVocab.split('\n').map(s => s.trim()).filter(s => s.length > 0);
+                    const selectedLines = lines.filter(l => !l.includes('[ ]') && !l.startsWith('#'));
+                    
+                    const formattedLines = selectedLines.map(line => extractChineseWord(line)).filter(l => l.length > 0);
+                    if (formattedLines.length > 0) {
+                        return formattedLines.join('\n');
+                    }
+                }
+            } catch (e) {
+                console.error("Lỗi khi đọc từ kho từ vựng tổng:", e);
+            }
+            return null;
+        }
+
+        window.onload = function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const compressedData = urlParams.get('z');
+            const isStudent = urlParams.get('s') === '1';
+
+            if (isStudent) document.body.classList.add('student-mode');
+
+            if (compressedData && typeof LZString !== 'undefined') {
+                try {
+                    const decompressed = LZString.decompressFromEncodedURIComponent(compressedData);
+                    if (decompressed) {
+                        const data = JSON.parse(decompressed);
+                        document.getElementById('vocabInput').value = data.vocabInput || '';
+                        document.getElementById('instructionTemplate').value = data.instructionTemplate || 'Tìm ra chữ "{word}" ';
+                        document.getElementById('itemsPerPage').value = data.itemsPerPage || '6';
+                        document.getElementById('fontFamily').value = data.fontFamily || "'Noto Serif SC', 'KaiTi', serif";
+                        document.getElementById('bubbleCount').value = data.bubbleCount || '18';
+                        document.getElementById('targetRepeatCount').value = data.targetRepeatCount || '4';
+                        document.getElementById('centerFontSize').value = data.centerFontSize || '85';
+                        document.getElementById('bubbleSize').value = data.bubbleSize || '38';
+                        document.getElementById('bubbleFontSize').value = data.bubbleFontSize || '20';
+
+                        generatedState = data.state || [];
+                        generateSheet(false);
+                        return;
+                    }
+                } catch (e) {
+                    console.error("Lỗi giải nén:", e);
+                }
+            }
+            
+            // ĐỌC TỰ ĐỘNG TỪ KHO TỪ VỰNG TỔNG
+            const repoVocab = loadVocabFromRepository();
+            if (repoVocab) {
+                document.getElementById('vocabInput').value = repoVocab;
+            } else {
+                document.getElementById('vocabInput').value = defaultChineseVocab.join("\n");
+            }
+
+            generateSheet(true);
+        };
+    </script>
+</body>
+</html>

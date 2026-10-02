@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Công Cụ Tạo Flashcard Tiếng Trung (Tự Động Nghĩa Tiếng Việt)</title>
+    <!-- Thư viện PinyinPro, LZString & HanziWriter -->
+    <script src="https://unpkg.com/pinyin-pro"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js"></script>
+
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --border-color: #000000;
+            --border-style: solid;
+            --border-width: 2px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            background-color: #f1f5f9;
+            color: #1e293b;
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar Bảng Điều Khiển */
+        .sidebar {
+            width: 410px;
+            background: #ffffff;
+            padding: 20px;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            z-index: 10;
+            overflow-y: auto;
+            height: 100vh;
+            position: fixed;
+            left: 0;
+            top: 0;
+        }
+
+        .sidebar h2 {
+            font-size: 1.1rem;
+            color: #0f172a;
+            margin-bottom: 10px;
+            padding-bottom: 4px;
+            border-bottom: 2px solid var(--primary-color);
+        }
+
+        .form-group {
+            margin-bottom: 12px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .form-group textarea {
+            width: 100%;
+            height: 110px;
+            padding: 8px;
+            border: 1px solid #cbd5e1;
+            border-radius: 4px;
+            resize: vertical;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #cbd5e1;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+
+        .row {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 10px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 6px;
+            transition: background 0.2s;
+            font-size: 13px;
+        }
+
+        .btn:hover { background-color: #1d4ed8; }
+        .btn-auto { background-color: #0d9488; }
+        .btn-auto:hover { background-color: #0f766e; }
+        .btn-reload { background-color: #0284c7; }
+        .btn-reload:hover { background-color: #0369a1; }
+        .btn-action { background-color: #d97706; }
+        .btn-action:hover { background-color: #b45309; }
+        .btn-share { background-color: #7c3aed; }
+        .btn-share:hover { background-color: #6d28d9; }
+        .btn-print { background-color: #059669; }
+        .btn-print:hover { background-color: #047857; }
+
+        /* Bảng Chỉnh Sửa Chi Tiết */
+        .vocab-editor {
+            max-height: 220px;
+            overflow-y: auto;
+            border: 1px solid #cbd5e1;
+            border-radius: 4px;
+            padding: 6px;
+            background: #f8fafc;
+            margin-bottom: 12px;
+        }
+
+        .vocab-row {
+            display: grid;
+            grid-template-columns: 0.8fr 1fr 1.8fr;
+            gap: 6px;
+            margin-bottom: 6px;
+        }
+
+        .vocab-row input {
+            padding: 4px 6px;
+            font-size: 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 3px;
+        }
+
+        /* Khu Vực Preview Trang A4 */
+        .preview-area {
+            margin-left: 410px;
+            flex: 1;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* Thanh Công Cụ Học Sinh */
+        .student-bar {
+            display: none;
+            position: sticky;
+            top: 10px;
+            z-index: 100;
+            background: #ffffff;
+            padding: 10px 20px;
+            border-radius: 30px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            margin-bottom: 20px;
+            gap: 12px;
+        }
+
+        body.student-mode .student-bar { display: flex; }
+
+        /* Trang A4 8 Ô */
+        .a4-page {
+            width: 210mm;
+            height: 297mm;
+            background: white;
+            padding: 12mm;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            margin-bottom: 30px;
+            box-sizing: border-box;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            grid-template-rows: repeat(4, 1fr);
+            gap: 12px;
+            page-break-after: always;
+        }
+
+        .flashcard-box {
+            perspective: 1000px;
+            cursor: pointer;
+            width: 100%;
+            height: 100%;
+        }
+
+        .flashcard-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+            border: var(--border-width) var(--border-style) var(--border-color);
+            border-radius: 8px;
+            background: #fff;
+            box-sizing: border-box;
+        }
+
+        .flashcard-box.flipped .flashcard-inner {
+            transform: rotateY(180deg);
+        }
+
+        .card-front, .card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 12px;
+            box-sizing: border-box;
+            top: 0;
+            left: 0;
+            border-radius: 6px;
+        }
+
+        .card-front { background-color: #ffffff; z-index: 2; }
+        .card-back {
+            background-color: #f8fafc;
+            transform: rotateY(180deg);
+            border: 2px dashed #3b82f6;
+            z-index: 1;
+        }
+
+        .watermark-text {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%) rotate(-30deg);
+            font-size: 18px;
+            color: rgba(0, 0, 0, 0.12);
+            font-weight: bold;
+            white-space: nowrap;
+            pointer-events: none;
+            z-index: 1;
+            user-select: none;
+        }
+
+        .card-sticker {
+            position: absolute;
+            top: 8px; right: 8px;
+            font-size: 22px;
+            z-index: 2;
+        }
+
+        .card-btn-group {
+            position: absolute;
+            top: 8px; left: 8px;
+            display: flex;
+            gap: 6px;
+            z-index: 10;
+        }
+
+        .card-icon-btn {
+            background: rgba(241, 245, 249, 0.95);
+            border: 1px solid #cbd5e1;
+            border-radius: 50%;
+            width: 28px; height: 28px;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .card-icon-btn:hover { background: #2563eb; color: #fff; border-color: #2563eb; }
+
+        .card-hanzi {
+            font-size: 85px;
+            font-weight: bold;
+            color: #000;
+            line-height: 1;
+            z-index: 2;
+        }
+
+        .back-pinyin {
+            font-size: 22px;
+            font-weight: bold;
+            color: #2563eb;
+            margin-bottom: 6px;
+            word-break: break-word;
+        }
+
+        .back-meaning {
+            font-size: 17px;
+            font-weight: 600;
+            color: #0f172a;
+            line-height: 1.3;
+            max-width: 90%;
+            word-break: break-word;
+        }
+
+        .flip-hint {
+            position: absolute;
+            bottom: 6px;
+            font-size: 11px;
+            color: #94a3b8;
+        }
+
+        /* Modal HanziWriter */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            width: 300px;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+
+        #writer-target {
+            width: 200px; height: 200px;
+            margin: 10px auto;
+            border: 1px dashed #cbd5e1;
+            background: #fafafa;
+        }
+
+        body.student-mode .sidebar { display: none !important; }
+        body.student-mode .preview-area { margin-left: 0 !important; width: 100vw !important; padding: 10px !important; }
+
+        @media print {
+            .sidebar, .modal-overlay, .card-btn-group, .student-bar { display: none !important; }
+            .preview-area { margin-left: 0 !important; padding: 0 !important; }
+            .a4-page { box-shadow: none; margin: 0; page-break-after: always; }
+            .flashcard-box.flipped .flashcard-inner { transform: none !important; }
+            .card-back, .flip-hint { display: none !important; }
+            @page { size: A4 portrait; margin: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- SIDEBAR BẢNG ĐIỀU KHIỂN -->
+    <div class="sidebar">
+        <h2>Cấu Hình Flashcard (8 Ô/Trang)</h2>
+
+        <button class="btn btn-reload" onclick="loadFromLocalStorage()">🔄 Nạp từ Kho từ vựng chung</button>
+
+        <div class="form-group" style="margin-top: 10px;">
+            <label for="vocabulary">Nhập Chữ Hán (Chỉ cần dán chữ Hán vào đây):</label>
+            <textarea id="vocabulary" placeholder="Ví dụ chỉ cần nhập:&#10;学&#10;学习&#10;银行&#10;中国&#10;谢谢"></textarea>
+            <button class="btn btn-auto" onclick="processAutoDictionary()">⚡ Tự Động Tra Nghĩa & Pinyin</button>
+        </div>
+
+        <!-- BẢNG TÙY CHỈNH KHI CẦN SỬA MẶT SAU THỦ CÔNG -->
+        <h2>Tùy Chỉnh Chi Tiết (Sửa nghĩa nếu cần)</h2>
+        <div class="vocab-editor" id="vocabEditor"></div>
+
+        <h2>Thao Tác Ôn Tập</h2>
+        <div class="row">
+            <button class="btn btn-action" onclick="shuffleCards()">🔀 Xáo trộn thẻ</button>
+            <button class="btn btn-action" onclick="toggleFlipAll()">🔄 Lật toàn bộ</button>
+        </div>
+
+        <h2 style="margin-top: 12px; color: #d97706;">Bản Quyền & Chống Trộm</h2>
+        <div class="form-group">
+            <label for="watermark">Chữ mờ (Watermark):</label>
+            <input type="text" id="watermark" value="TIẾNG TRUNG THỦY NGUYỄN">
+        </div>
+        <div class="row">
+            <div class="form-group" style="flex:1;">
+                <label for="watermarkOpacity">Độ mờ (%):</label>
+                <input type="number" id="watermarkOpacity" value="12" min="5" max="50">
+            </div>
+            <div class="form-group" style="flex:1;">
+                <label for="watermarkSize">Cỡ chữ (px):</label>
+                <input type="number" id="watermarkSize" value="18" min="10" max="40">
+            </div>
+        </div>
+
+        <h2 style="margin-top: 12px;">Trang Trí & Viền</h2>
+        <div class="row">
+            <div class="form-group" style="flex:1;">
+                <label for="borderColor">Màu viền:</label>
+                <input type="color" id="borderColor" value="#000000">
+            </div>
+            <div class="form-group" style="flex:1;">
+                <label for="borderStyle">Kiểu viền:</label>
+                <select id="borderStyle">
+                    <option value="solid" selected>Nét liền</option>
+                    <option value="dashed">Nét đứt</option>
+                    <option value="double">Viền đôi</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="form-group" style="flex:1;">
+                <label for="borderWidth">Độ dày (px):</label>
+                <input type="number" id="borderWidth" value="2" min="1" max="6">
+            </div>
+            <div class="form-group" style="flex:1;">
+                <label for="stickerOption">Sticker:</label>
+                <select id="stickerOption">
+                    <option value="none">Không có</option>
+                    <option value="🐼">🐼 Gấu Trúc</option>
+                    <option value="🌸">🌸 Hoa Nhài</option>
+                    <option value="⭐">⭐ Ngôi Sao</option>
+                    <option value="🐱">🐱 Mèo Con</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="fontFamily">Font chữ Hán:</label>
+            <select id="fontFamily">
+                <option value="'KaiTi', 'STKaiti', 'SimSun', serif" selected>KaiTi (楷体)</option>
+                <option value="'SimSun', 'NSimSun', serif">SimSun (宋体)</option>
+                <option value="'Arial', sans-serif">Arial Bold</option>
+            </select>
+        </div>
+
+        <button class="btn" onclick="generateFlashcards()">Tạo Thẻ Flashcard</button>
+        <button class="btn btn-share" onclick="generateShareLink()">🔗 Tạo & Sao Chép Link Học Sinh</button>
+        <button class="btn btn-print" onclick="window.print()">In / Xuất File PDF A4</button>
+    </div>
+
+    <!-- KHU VỰC PREVIEW A4 -->
+    <div class="preview-area" id="previewArea">
+        <div class="student-bar">
+            <button class="btn btn-action" onclick="shuffleCards()" style="margin-top:0;">🔀 Xáo Trộn Thẻ</button>
+            <button class="btn btn-action" onclick="toggleFlipAll()" style="margin-top:0;">🔄 Lật Toàn Bộ Thẻ</button>
+        </div>
+        <div id="pageContainer"></div>
+    </div>
+
+    <!-- MODAL NÉT VẼ -->
+    <div class="modal-overlay" id="strokeModal">
+        <div class="modal-content">
+            <h3 id="modalCharTitle">Thứ tự nét vẽ</h3>
+            <div id="writer-target"></div>
+            <button class="btn" onclick="closeStrokeModal()">Đóng</button>
+        </div>
+    </div>
+
+    <script>
+        // TỪ ĐIỂN TIẾNG VIỆT TÍCH HỢP TỰ ĐỘNG
+        const zhDict = {
+            "学": "Học tập", "习": "Luyện tập, thực hành", "学习": "Học tập",
+            "行": "Đi, di chuyển, được", "银行": "Ngân hàng", "你": "Bạn / Anh / Chị",
+            "好": "Tốt, đẹp, hay", "你好": "Xin chào", "谢": "Cảm ơn", "谢谢": "Cảm ơn",
+            "爱": "Yêu, thương", "猫": "Con mèo", "狗": "Con chó", "中国": "Trung Quốc",
+            "人": "Người", "大": "Lớn, to", "小": "Nhỏ, bé", "水": "Nước",
+            "吃": "Ăn", "喝": "Uống", "茶": "Trà", "米饭": "Cơm", "家": "Gia đình, nhà",
+            "爸爸": "Bố", "妈妈": "Mẹ", "哥哥": "Anh trai", "姐姐": "Chị gái",
+            "弟弟": "Em trai", "妹妹": "Em gái", "老师": "Giáo viên", "学生": "Học sinh",
+            "朋友": "Bạn bè", "看": "Xem, nhìn, đọc", "听": "Nghe", "写": "Viết",
+            "买": "Mua", "卖": "Bán", "钱": "Tiền", "多": "Nhiều", "少": "Ít"
+        };
+
+        let currentItems = [];
+        let allFlipped = false;
+        let activeWriter = null;
+
+        const defaultChars = "学习\n银行\n你好\n谢谢\n中国\n老师\n朋友\n开心";
+
+        function getAutoPinyin(text) {
+            try {
+                if (typeof pinyinPro !== 'undefined' && pinyinPro.pinyin) {
+                    return pinyinPro.pinyin(text, { toneType: 'symbol' });
+                }
+            } catch(e) {}
+            return "";
+        }
+
+        function speakHanzi(text, event) {
+            if (event) event.stopPropagation();
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'zh-CN';
+                utterance.rate = 0.85;
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        function showStrokeOrder(char, event) {
+            if (event) event.stopPropagation();
+            const modal = document.getElementById('strokeModal');
+            document.getElementById('modalCharTitle').innerText = `Cách viết chữ: ${char}`;
+            document.getElementById('writer-target').innerHTML = "";
+            modal.style.display = "flex";
+
+            const singleChar = char.trim().charAt(0);
+            if (!singleChar) return;
+
+            activeWriter = HanziWriter.create('writer-target', singleChar, {
+                width: 200, height: 200, padding: 10,
+                showOutline: true, strokeAnimationSpeed: 1, delayBetweenStrokes: 150
+            });
+            activeWriter.animateCharacter();
+        }
+
+        function closeStrokeModal() {
+            document.getElementById('strokeModal').style.display = "none";
+        }
+
+        function loadFromLocalStorage() {
+            const vocabData = localStorage.getItem('zh_active_vocab');
+            if (vocabData && vocabData.trim() !== '') {
+                document.getElementById('vocabulary').value = vocabData;
+                processAutoDictionary();
+            } else {
+                alert("Chưa tìm thấy dữ liệu trong Kho từ vựng ('zh_active_vocab')!");
+            }
+        }
+
+        // TỰ ĐỘNG SINH NGHĨA VÀ PINYIN CHO DANH SÁCH TỪ VỰNG
+        function processAutoDictionary() {
+            const rawText = document.getElementById('vocabulary').value;
+            const lines = rawText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+            let itemList = [];
+            lines.forEach(line => {
+                // Nếu người dùng nhập dạng Hán | Nghĩa | Pinyin thì vẫn giữ nguyên
+                const parts = line.split('|').map(p => p.trim());
+                let hanzi = parts[0];
+                let meaning = "";
+                let pinyin = "";
+
+                if (parts.length >= 2) {
+                    meaning = parts[1];
+                    pinyin = parts[2] || getAutoPinyin(hanzi);
+                } else {
+                    // Tự động tra từ điển nếu chỉ nhập Chữ Hán
+                    pinyin = getAutoPinyin(hanzi);
+                    meaning = zhDict[hanzi] || `(Nghĩa từ ${hanzi})`;
+                }
+
+                itemList.push({ hanzi, pinyin, meaning });
+            });
+
+            currentItems = itemList;
+            renderVocabEditor();
+            generateFlashcards();
+        }
+
+        // BẢNG CHỈNH SỬA TỦY CHỈNH THỦ CÔNG KHI NGHĨA CHƯA CHUẨN
+        function renderVocabEditor() {
+            const editorContainer = document.getElementById('vocabEditor');
+            editorContainer.innerHTML = "";
+
+            currentItems.forEach((item, index) => {
+                const row = document.createElement('div');
+                row.className = 'vocab-row';
+
+                row.innerHTML = `
+                    <input type="text" value="${item.hanzi}" onchange="updateItem(${index}, 'hanzi', this.value)">
+                    <input type="text" value="${item.pinyin}" placeholder="Pinyin" onchange="updateItem(${index}, 'pinyin', this.value)">
+                    <input type="text" value="${item.meaning}" placeholder="Nghĩa Tiếng Việt" onchange="updateItem(${index}, 'meaning', this.value)">
+                `;
+                editorContainer.appendChild(row);
+            });
+        }
+
+        function updateItem(index, key, value) {
+            if (currentItems[index]) {
+                currentItems[index][key] = value;
+                renderItems(currentItems);
+            }
+        }
+
+        function shuffleCards() {
+            if (currentItems.length === 0) return;
+            for (let i = currentItems.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [currentItems[i], currentItems[j]] = [currentItems[j], currentItems[i]];
+            }
+            renderVocabEditor();
+            renderItems(currentItems);
+        }
+
+        function toggleFlipAll() {
+            allFlipped = !allFlipped;
+            const cardBoxes = document.querySelectorAll('.flashcard-box');
+            cardBoxes.forEach(box => {
+                if (allFlipped) box.classList.add('flipped');
+                else box.classList.remove('flipped');
+            });
+        }
+
+        function generateFlashcards() {
+            if (currentItems.length === 0) processAutoDictionary();
+            renderItems(currentItems);
+        }
+
+        function renderItems(itemList) {
+            allFlipped = false;
+            const watermark = document.getElementById('watermark').value;
+            const watermarkOpacity = parseFloat(document.getElementById('watermarkOpacity').value) / 100;
+            const watermarkSize = parseInt(document.getElementById('watermarkSize').value);
+
+            const borderColor = document.getElementById('borderColor').value;
+            const borderStyle = document.getElementById('borderStyle').value;
+            const borderWidth = parseInt(document.getElementById('borderWidth').value);
+            const stickerOption = document.getElementById('stickerOption').value;
+            const fontFamily = document.getElementById('fontFamily').value;
+
+            document.documentElement.style.setProperty('--border-color', borderColor);
+            document.documentElement.style.setProperty('--border-style', borderStyle);
+            document.documentElement.style.setProperty('--border-width', borderWidth + 'px');
+
+            const pageContainer = document.getElementById('pageContainer');
+            pageContainer.innerHTML = "";
+
+            let currentPage = null;
+            const itemsPerPage = 8;
+
+            itemList.forEach((item, index) => {
+                if (index % itemsPerPage === 0) {
+                    currentPage = document.createElement('div');
+                    currentPage.className = 'a4-page';
+                    pageContainer.appendChild(currentPage);
+                }
+
+                const cardBox = document.createElement('div');
+                cardBox.className = 'flashcard-box';
+                cardBox.onclick = function() { this.classList.toggle('flipped'); };
+
+                const cardInner = document.createElement('div');
+                cardInner.className = 'flashcard-inner';
+
+                // MẶT TRƯỚC
+                const cardFront = document.createElement('div');
+                cardFront.className = 'card-front';
+
+                const frontBtnGroup = document.createElement('div');
+                frontBtnGroup.className = 'card-btn-group';
+
+                const frontAudioBtn = document.createElement('button');
+                frontAudioBtn.className = 'card-icon-btn';
+                frontAudioBtn.innerHTML = '🔊';
+                frontAudioBtn.onclick = (e) => speakHanzi(item.hanzi, e);
+                frontBtnGroup.appendChild(frontAudioBtn);
+                cardFront.appendChild(frontBtnGroup);
+
+                if (watermark.trim() !== '') {
+                    const watermarkDiv = document.createElement('div');
+                    watermarkDiv.className = 'watermark-text';
+                    watermarkDiv.innerText = watermark;
+                    watermarkDiv.style.color = `rgba(0, 0, 0, ${watermarkOpacity})`;
+                    watermarkDiv.style.fontSize = watermarkSize + 'px';
+                    cardFront.appendChild(watermarkDiv);
+                }
+
+                if (stickerOption !== 'none') {
+                    const stickerDiv = document.createElement('div');
+                    stickerDiv.className = 'card-sticker';
+                    stickerDiv.innerText = stickerOption;
+                    cardFront.appendChild(stickerDiv);
+                }
+
+                const hanziDiv = document.createElement('div');
+                hanziDiv.className = 'card-hanzi';
+                hanziDiv.style.fontFamily = fontFamily;
+                hanziDiv.innerText = item.hanzi;
+                cardFront.appendChild(hanziDiv);
+
+                const hintDiv = document.createElement('div');
+                hintDiv.className = 'flip-hint';
+                hintDiv.innerText = '👆 Bấm để xem đáp án';
+                cardFront.appendChild(hintDiv);
+
+                // MẶT SAU
+                const cardBack = document.createElement('div');
+                cardBack.className = 'card-back';
+
+                const backBtnGroup = document.createElement('div');
+                backBtnGroup.className = 'card-btn-group';
+
+                const backAudioBtn = document.createElement('button');
+                backAudioBtn.className = 'card-icon-btn';
+                backAudioBtn.innerHTML = '🔊';
+                backAudioBtn.onclick = (e) => speakHanzi(item.hanzi, e);
+                backBtnGroup.appendChild(backAudioBtn);
+
+                const strokeBtn = document.createElement('button');
+                strokeBtn.className = 'card-icon-btn';
+                strokeBtn.innerHTML = '✍';
+                strokeBtn.onclick = (e) => showStrokeOrder(item.hanzi, e);
+                backBtnGroup.appendChild(strokeBtn);
+
+                cardBack.appendChild(backBtnGroup);
+
+                const pinyinDiv = document.createElement('div');
+                pinyinDiv.className = 'back-pinyin';
+                pinyinDiv.innerText = item.pinyin;
+                cardBack.appendChild(pinyinDiv);
+
+                const meaningDiv = document.createElement('div');
+                meaningDiv.className = 'back-meaning';
+                meaningDiv.innerText = item.meaning;
+                cardBack.appendChild(meaningDiv);
+
+                cardInner.appendChild(cardFront);
+                cardInner.appendChild(cardBack);
+                cardBox.appendChild(cardInner);
+                currentPage.appendChild(cardBox);
+            });
+        }
+
+        // TẠO LINK CHIA SẺ VỚI TRẠNG THÁI HIỆN TẠI (ĐÃ XÁO TRỘN & ĐÃ SỬA NGHĨA/PINYIN)
+        function generateShareLink() {
+            if (currentItems.length === 0) {
+                alert("Chưa có từ vựng nào!");
+                return;
+            }
+
+            const formattedData = currentItems.map(item => `${item.hanzi}|${item.pinyin}|${item.meaning}`).join('\n');
+            const plainText = `flashcard_exact|${formattedData}`;
+
+            if (typeof LZString !== 'undefined') {
+                const compressed = LZString.compressToEncodedURIComponent(plainText);
+                const baseUrl = window.location.href.split('?')[0];
+                const studentUrl = `${baseUrl}?z=${compressed}&s=1`;
+
+                if (navigator.clipboard) {
+                    navigator.clipboard.writeText(studentUrl).then(() => {
+                        alert("✅ ĐÃ SAO CHÉP LINK HỌC SINH!\n\nHọc sinh sẽ nhận đúng THỨ TỰ BÀI TẬP ĐÃ XÁO TRỘN và NGHĨA/PINYIN đã tự động dịch.");
+                    }).catch(() => { prompt("Sao chép link dưới đây:", studentUrl); });
+                } else {
+                    prompt("Sao chép link dưới đây:", studentUrl);
+                }
+            }
+        }
+
+        window.onload = function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const compressedData = urlParams.get('z');
+            const isStudent = urlParams.get('s') === '1';
+
+            if (isStudent) {
+                document.body.classList.add('student-mode');
+            }
+
+            if (compressedData && typeof LZString !== 'undefined') {
+                try {
+                    const decompressed = LZString.decompressFromEncodedURIComponent(compressedData);
+                    if (decompressed) {
+                        const parts = decompressed.split('|');
+                        const header = parts[0];
+                        const content = parts.slice(1).join('|');
+
+                        if (header === 'flashcard_exact') {
+                            const lines = content.split('\n');
+                            currentItems = lines.map(line => {
+                                const [hanzi, pinyin, meaning] = line.split('|');
+                                return { hanzi, pinyin, meaning };
+                            });
+                            renderVocabEditor();
+                            renderItems(currentItems);
+                            return;
+                        }
+                    }
+                } catch (e) {
+                    console.error("Lỗi giải nén:", e);
+                }
+            } else {
+                document.getElementById('vocabulary').value = defaultChars;
+            }
+
+            processAutoDictionary();
+        };
+    </script>
+</body>
+</html>

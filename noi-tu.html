@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tạo Bài Tập Nối Từ & Chọn Pinyin Tiếng Trung</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500;700;900&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/pinyin-pro@3.26.0/dist/index.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
+
+    <style>
+        :root { --sidebar-width: 380px; }
+        body { font-family: 'Roboto', sans-serif; background-color: #f1f5f9; color: #1e293b; }
+        .chinese-font { font-family: 'Noto Serif SC', 'KaiTi', 'STKaiti', serif; }
+
+        .sidebar-container {
+            width: 380px; height: 100vh; position: fixed; left: 0; top: 0;
+            background: #ffffff; border-right: 1px solid #e2e8f0; overflow-y: auto; z-index: 50;
+            box-shadow: 4px 0 15px rgba(0,0,0,0.05);
+        }
+
+        .preview-container {
+            margin-left: 380px; padding: 30px; min-height: 100vh;
+            display: flex; flex-direction: column; align-items: center;
+        }
+
+        .a4-page {
+            width: 210mm; min-height: 297mm; background: #ffffff; padding: 12mm 15mm;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1); margin-bottom: 25px;
+            box-sizing: border-box; position: relative; page-break-after: always;
+        }
+
+        .answer-key { display: none; }
+        .show-answers .answer-key { display: block !important; }
+
+        /* Style cho phần Nối từ */
+        .interactive-item { cursor: pointer; transition: all 0.2s ease; }
+        .interactive-item.active-select { outline: 2px solid #2563eb; background-color: #eff6ff !important; }
+
+        /* Style rõ ràng cho phần Chọn Pinyin khi CLICK CHỌN */
+        .interactive-choice { cursor: pointer; transition: all 0.15s ease; user-select: none; }
+        .interactive-choice.selected-choice {
+            background-color: #7c3aed !important; /* Màu tím nổi bật khi chọn */
+            color: #ffffff !important;
+            border-color: #6d28d9 !important;
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(124, 58, 237, 0.3);
+        }
+        
+        /* Trạng thái đúng / sai sau khi BẤM KIỂM TRA */
+        .is-correct { background-color: #dcfce7 !important; border-color: #16a34a !important; color: #15803d !important; font-weight: bold; }
+        .is-wrong { background-color: #fee2e2 !important; border-color: #dc2626 !important; color: #b91c1c !important; text-decoration: line-through; }
+
+        body.student-mode .sidebar-container { display: none !important; }
+        body.student-mode .preview-container { margin-left: 0 !important; padding: 10px !important; width: 100vw !important; }
+
+        @media print {
+            body { background: #ffffff !important; }
+            .sidebar-container, .no-print, .student-actions { display: none !important; }
+            .preview-container { margin-left: 0 !important; padding: 0 !important; }
+            .a4-page { box-shadow: none !important; margin: 0 !important; width: 210mm !important; border: none !important; }
+            .interactive-choice { background-color: #fff !important; color: #000 !important; }
+            @page { size: A4 portrait; margin: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar-container p-5 text-slate-800">
+        <div class="flex items-center gap-2 mb-4 pb-3 border-b border-slate-200">
+            <h1 class="text-xl font-bold text-slate-900">🔗 Nối Từ & Chọn Pinyin</h1>
+        </div>
+
+        <div class="space-y-4">
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Dạng bài tập:</label>
+                <div class="grid grid-cols-2 gap-2">
+                    <button id="btnModeMatch" onclick="switchMode('match')" class="py-2 text-xs font-bold rounded-lg border border-blue-600 bg-blue-600 text-white shadow-sm">
+                        Dạng 1: Nối Từ
+                    </button>
+                    <button id="btnModeChoice" onclick="switchMode('choice')" class="py-2 text-xs font-bold rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50">
+                        Dạng 2: Chọn Pinyin
+                    </button>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Kho từ vựng (mỗi từ 1 dòng):</label>
+                <textarea id="vocabInput" rows="6" class="w-full p-2.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 font-serif chinese-font" placeholder="你好&#10;老师&#10;学生&#10;中国&#10;越南&#10;朋友&#10;再见"></textarea>
+            </div>
+
+            <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-2">
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-700">Tiêu đề chính:</label>
+                    <input type="text" id="customTitle" class="w-full p-1.5 text-xs border border-slate-300 rounded" value="BÀI TẬP TIẾNG TRUNG">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-700">Hướng dẫn làm bài:</label>
+                    <input type="text" id="customSubtitle" class="w-full p-1.5 text-xs border border-slate-300 rounded" value="Hãy nối/chọn từ tiếng Trung với Pinyin tương ứng">
+                </div>
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-700">Chân trang (In ấn):</label>
+                    <input type="text" id="customFooter" class="w-full p-1.5 text-xs border border-slate-300 rounded" value="Họ và tên: ____________________    Ngày: __________">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Số lượng đề:</label>
+                    <input type="number" id="quizCount" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="6" min="1" max="30">
+                </div>
+                <div id="perQuizBox">
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Từ / 1 Đề nối:</label>
+                    <input type="number" id="wordsPerQuiz" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="6" min="4" max="10">
+                </div>
+            </div>
+
+            <div id="noticeBox" class="hidden p-2.5 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg text-xs"></div>
+
+            <div class="pt-2 space-y-2">
+                <button onclick="generateSheet()" class="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-md transition-all">✨ Tạo Bài Tập</button>
+                <button onclick="toggleAnswers()" class="w-full py-2 px-4 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-lg text-xs shadow-sm">Ẩn / Hiện Đáp Án Gợi Ý</button>
+                <button onclick="generateShareLink()" class="w-full py-2.5 px-4 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-lg shadow-md">🔗 Sao Chép Link Học Sinh</button>
+                <button onclick="window.print()" class="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow-md">🖨️ In / Xuất PDF</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PREVIEW AREA -->
+    <div class="preview-container" id="previewArea"></div>
+
+    <script>
+        let currentMode = 'match';
+        const defaultVocab = ["你好", "老师", "学生", "中国", "越南", "朋友", "再见", "谢谢", "高兴", "学习", "汉字", "苹果"];
+        let selectedLeftItem = null;
+
+        function switchMode(mode) {
+            currentMode = mode;
+            document.getElementById('btnModeMatch').className = mode === 'match' ? "py-2 text-xs font-bold rounded-lg border border-blue-600 bg-blue-600 text-white shadow-sm" : "py-2 text-xs font-bold rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50";
+            document.getElementById('btnModeChoice').className = mode === 'choice' ? "py-2 text-xs font-bold rounded-lg border border-blue-600 bg-blue-600 text-white shadow-sm" : "py-2 text-xs font-bold rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50";
+            document.getElementById('perQuizBox').style.display = mode === 'match' ? "block" : "none";
+            generateSheet();
+        }
+
+        function getPinyin(word) {
+            try {
+                if (window.pinyinPro && window.pinyinPro.pinyin) {
+                    return window.pinyinPro.pinyin(word, { toneType: 'symbol', type: 'array' }).join(' ');
+                }
+            } catch (e) {}
+            return '';
+        }
+
+        function shuffle(arr) {
+            let res = [...arr];
+            for (let i = res.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [res[i], res[j]] = [res[i], res[j]];
+            }
+            return res;
+        }
+
+        function toggleAnswers() {
+            document.getElementById('previewArea').classList.toggle('show-answers');
+        }
+
+        function generateSheet() {
+            const rawText = document.getElementById('vocabInput').value;
+            const vocabList = [...new Set(rawText.split(/[\n,;\t]+/).map(s => s.trim()).filter(Boolean))];
+
+            if (vocabList.length === 0) return;
+
+            const data = vocabList.map((word, idx) => ({ id: idx, hanzi: word, pinyin: getPinyin(word) }));
+            const quizCount = parseInt(document.getElementById('quizCount').value) || 6;
+            const wordsPerQuiz = parseInt(document.getElementById('wordsPerQuiz').value) || 6;
+
+            const title = document.getElementById('customTitle').value;
+            const subtitle = document.getElementById('customSubtitle').value;
+            const footer = document.getElementById('customFooter').value;
+
+            const previewArea = document.getElementById('previewArea');
+            previewArea.innerHTML = "";
+
+            let page = document.createElement('div');
+            page.className = 'a4-page flex flex-col justify-between';
+
+            let headerHtml = `
+                <div class="border-b-2 border-slate-800 pb-3 mb-4 text-center">
+                    <h1 class="text-2xl font-bold tracking-wide text-slate-900">${title}</h1>
+                    ${subtitle ? `<p class="text-xs text-slate-600 mt-1">${subtitle}</p>` : ''}
+                </div>
+            `;
+
+            let contentGrid = document.createElement('div');
+            contentGrid.className = 'grid grid-cols-2 gap-4';
+
+            if (currentMode === 'match') {
+                for (let q = 0; q < quizCount; q++) {
+                    const chosen = shuffle(data).slice(0, wordsPerQuiz);
+                    const leftCol = shuffle(chosen);
+                    const rightCol = shuffle(chosen);
+
+                    const card = document.createElement('div');
+                    card.className = 'quiz-card border border-slate-300 rounded-lg p-3 bg-white shadow-sm flex flex-col justify-between';
+
+                    let matchRows = '';
+                    for (let i = 0; i < wordsPerQuiz; i++) {
+                        matchRows += `
+                            <div class="flex items-center justify-between my-1.5 gap-2 match-pair-row" data-correct-id="${leftCol[i].id}">
+                                <div class="interactive-item left-item border border-slate-200 bg-slate-50 rounded px-2.5 py-1 text-sm font-semibold chinese-font w-1/2 text-slate-800 hover:bg-blue-50" 
+                                     data-id="${leftCol[i].id}" onclick="handleLeftClick(this)">
+                                    ${i + 1}. ${leftCol[i].hanzi} <span class="badge text-[10px] text-blue-600 font-normal"></span>
+                                </div>
+                                <div class="interactive-item right-item border border-slate-200 bg-slate-50 rounded px-2.5 py-1 text-xs text-slate-600 w-1/2 text-right hover:bg-amber-50" 
+                                     data-id="${rightCol[i].id}" data-label="${String.fromCharCode(97 + i)}" onclick="handleRightClick(this)">
+                                    ${String.fromCharCode(97 + i)}. ${rightCol[i].pinyin}
+                                </div>
+                            </div>
+                        `;
+                    }
+
+                    const answers = leftCol.map((lItem, i) => {
+                        const rightIdx = rightCol.findIndex(rItem => rItem.id === lItem.id);
+                        return `${i + 1}→${String.fromCharCode(97 + rightIdx)}`;
+                    }).join(' · ');
+
+                    card.innerHTML = `
+                        <div>
+                            <h3 class="font-bold text-xs text-slate-700 pb-1 border-b border-slate-100 mb-2">Bài ${q + 1}</h3>
+                            ${matchRows}
+                        </div>
+                        <div>
+                            <div class="answer-key text-[11px] font-bold text-emerald-700 bg-emerald-50 p-1.5 rounded mt-2 border border-emerald-200">
+                                Đáp án: ${answers}
+                            </div>
+                        </div>
+                    `;
+                    contentGrid.appendChild(card);
+                }
+            } else {
+                // Dạng 2: Chọn Pinyin
+                for (let q = 0; q < quizCount; q++) {
+                    const target = data[q % data.length];
+                    let wrongOptions = shuffle(data.filter(d => d.id !== target.id)).slice(0, 3).map(d => d.pinyin);
+                    while (wrongOptions.length < 3) wrongOptions.push("—");
+
+                    const options = shuffle([target.pinyin, ...wrongOptions]);
+                    const correctChar = String.fromCharCode(65 + options.indexOf(target.pinyin));
+
+                    const card = document.createElement('div');
+                    card.className = 'quiz-card border border-slate-300 rounded-lg p-3 bg-white shadow-sm flex flex-col justify-between';
+
+                    let optionsHtml = options.map((opt, i) => `
+                        <div class="interactive-choice border border-slate-200 rounded p-2 text-xs text-slate-700 hover:bg-slate-100" 
+                             data-pinyin="${opt}" data-correct="${opt === target.pinyin}" onclick="selectChoice(this)">
+                            <b>${String.fromCharCode(65 + i)}.</b> ${opt}
+                        </div>
+                    `).join('');
+
+                    card.innerHTML = `
+                        <div>
+                            <div class="flex items-center justify-between pb-1 border-b border-slate-100 mb-2">
+                                <span class="font-bold text-xs text-slate-700">Câu ${q + 1}</span>
+                            </div>
+                            <div class="text-center font-bold text-2xl text-slate-900 my-2 chinese-font">${target.hanzi}</div>
+                            <div class="grid grid-cols-2 gap-2 choices-grid">${optionsHtml}</div>
+                        </div>
+                        <div>
+                            <div class="answer-key text-[11px] font-bold text-emerald-700 bg-emerald-50 p-1.5 rounded mt-2 border border-emerald-200">
+                                Đáp án: ${correctChar}. ${target.pinyin}
+                            </div>
+                        </div>
+                    `;
+                    contentGrid.appendChild(card);
+                }
+            }
+
+            let footerHtml = footer ? `<div class="border-t border-slate-300 pt-2 mt-4 text-center text-xs text-slate-500">${footer}</div>` : '';
+
+            // Đưa phần nội dung trực tiếp vào page
+            page.innerHTML = `
+                <div>
+                    ${headerHtml}
+                    <div class="page-content-wrapper"></div>
+                </div>
+                <div class="student-actions mt-4 text-center no-print">
+                    <button onclick="checkAnswers(this)" class="px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow-md transition-all">
+                        ✅ Nộp Bài & Kiểm Tra Đáp Án
+                    </button>
+                </div>
+                ${footerHtml}
+            `;
+
+            page.querySelector('.page-content-wrapper').appendChild(contentGrid);
+            previewArea.appendChild(page);
+        }
+
+        /* --- XỬ LÝ NỐI TỪ KHI CLICK --- */
+        function handleLeftClick(el) {
+            const card = el.closest('.quiz-card');
+            card.querySelectorAll('.left-item').forEach(i => i.classList.remove('active-select'));
+            el.classList.add('active-select');
+            selectedLeftItem = el;
+        }
+
+        function handleRightClick(rightEl) {
+            if (!selectedLeftItem) return;
+
+            const rightId = rightEl.dataset.id;
+            const rightLabel = rightEl.dataset.label;
+
+            selectedLeftItem.dataset.pairedRightId = rightId;
+            selectedLeftItem.querySelector('.badge').innerText = ` → (${rightLabel.toUpperCase()})`;
+
+            selectedLeftItem.classList.remove('active-select');
+            selectedLeftItem = null;
+        }
+
+        /* --- XỬ LÝ CHỌN PINYIN ĐÃ SỬA LỖI (HIGHLIGHT RÕ RÀNG) --- */
+        function selectChoice(el) {
+            const grid = el.closest('.choices-grid');
+            
+            // Bỏ chọn tất cả các đáp án khác trong cùng câu hỏi
+            grid.querySelectorAll('.interactive-choice').forEach(c => {
+                c.classList.remove('selected-choice');
+                c.dataset.userSelected = "false";
+            });
+            
+            // Đánh dấu đáp án được chọn
+            el.classList.add('selected-choice');
+            el.dataset.userSelected = "true";
+        }
+
+        /* --- KIỂM TRA ĐÁP ÁN ĐÚNG / SAI --- */
+        function checkAnswers(btn) {
+            const page = btn.closest('.a4-page');
+
+            if (currentMode === 'match') {
+                page.querySelectorAll('.left-item').forEach(leftEl => {
+                    const correctId = leftEl.dataset.id;
+                    const pairedRightId = leftEl.dataset.pairedRightId;
+
+                    if (pairedRightId) {
+                        if (correctId === pairedRightId) {
+                            leftEl.classList.add('is-correct');
+                        } else {
+                            leftEl.classList.add('is-wrong');
+                        }
+                    } else {
+                        leftEl.classList.add('is-wrong');
+                    }
+                });
+            } else {
+                page.querySelectorAll('.quiz-card').forEach(card => {
+                    const choices = card.querySelectorAll('.interactive-choice');
+                    choices.forEach(c => {
+                        const isCorrect = c.dataset.correct === "true";
+                        const isSelected = c.dataset.userSelected === "true";
+
+                        // Xóa class highlight tạm thời
+                        c.classList.remove('selected-choice');
+
+                        if (isSelected && isCorrect) {
+                            c.classList.add('is-correct');
+                        } else if (isSelected && !isCorrect) {
+                            c.classList.add('is-wrong');
+                        } else if (!isSelected && isCorrect) {
+                            c.classList.add('is-correct'); // Hiện xanh đáp án đúng khi học sinh chọn sai hoặc chưa chọn
+                        }
+                    });
+                });
+            }
+
+            // Mở khung đáp án bên dưới
+            page.classList.add('show-answers');
+            alert("Đã kiểm tra xong! Đáp án đúng hiển thị màu xanh lá, đáp án chọn sai hiển thị màu đỏ.");
+        }
+
+        /* --- TỰ ĐỘNG SAO CHÉP LINK BÀI TẬP (ĐỒNG BỘ CẤU HÌNH) --- */
+        function generateShareLink() {
+            const rawText = document.getElementById('vocabInput').value;
+            const vocabList = [...new Set(rawText.split(/[\n,;\t]+/).map(s => s.trim()).filter(Boolean))];
+            if (vocabList.length === 0) return alert("Vui lòng nhập từ vựng!");
+
+            const config = {
+                mode: currentMode,
+                vocab: vocabList,
+                title: document.getElementById('customTitle').value,
+                subtitle: document.getElementById('customSubtitle').value,
+                footer: document.getElementById('customFooter').value,
+                quizCount: document.getElementById('quizCount').value,
+                wordsPerQuiz: document.getElementById('wordsPerQuiz').value
+            };
+
+            if (typeof LZString !== 'undefined') {
+                const compressed = LZString.compressToEncodedURIComponent(JSON.stringify(config));
+                const baseUrl = window.location.href.split('?')[0];
+                const studentUrl = `${baseUrl}?z=${compressed}&s=1`;
+
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(studentUrl).then(() => {
+                        alert("✅ Đã tự động sao chép link bài tập học sinh vào bộ nhớ tạm!");
+                    }).catch(() => {
+                        copyFallback(studentUrl);
+                    });
+                } else {
+                    copyFallback(studentUrl);
+                }
+            }
+        }
+
+        function copyFallback(text) {
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";
+            textArea.style.left = "-999999px";
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                alert("✅ Đã tự động sao chép link bài tập học sinh vào bộ nhớ tạm!");
+            } catch (err) {
+                alert("Link bài tập học sinh: " + text);
+            }
+            document.body.removeChild(textArea);
+        }
+
+        window.onload = function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const compressedData = urlParams.get('z');
+            const isStudent = urlParams.get('s') === '1';
+
+            if (isStudent) document.body.classList.add('student-mode');
+
+            if (compressedData && typeof LZString !== 'undefined') {
+                try {
+                    const decompressed = LZString.decompressFromEncodedURIComponent(compressedData);
+                    if (decompressed) {
+                        // Kiểm tra cấu hình JSON
+                        if (decompressed.startsWith('{')) {
+                            const config = JSON.parse(decompressed);
+                            if (config.vocab && config.vocab.length > 0) {
+                                document.getElementById('vocabInput').value = config.vocab.join("\n");
+                                if (config.title !== undefined) document.getElementById('customTitle').value = config.title;
+                                if (config.subtitle !== undefined) document.getElementById('customSubtitle').value = config.subtitle;
+                                if (config.footer !== undefined) document.getElementById('customFooter').value = config.footer;
+                                if (config.quizCount !== undefined) document.getElementById('quizCount').value = config.quizCount;
+                                if (config.wordsPerQuiz !== undefined) document.getElementById('wordsPerQuiz').value = config.wordsPerQuiz;
+
+                                if (config.mode === 'choice') {
+                                    switchMode('choice');
+                                    return;
+                                }
+                            }
+                        } else {
+                            // Tương thích ngược dạng legacy text
+                            const parts = decompressed.split('|');
+                            const mode = parts[1];
+                            const words = parts.slice(2);
+
+                            if (words.length > 0) {
+                                document.getElementById('vocabInput').value = words.join("\n");
+                                if (mode === 'choice') {
+                                    switchMode('choice');
+                                    return;
+                                }
+                            }
+                        }
+                    }
+                } catch (e) {}
+            } else {
+                document.getElementById('vocabInput').value = defaultVocab.join("\n");
+            }
+
+            generateSheet();
+        };
+    </script>
+<script>
+    // Tự động lấy từ vựng từ Kho khi file lẻ này được tải
+    window.addEventListener('DOMContentLoaded', () => {
+        const vocabData = localStorage.getItem('zh_active_vocab');
+        if (!vocabData) return;
+
+        // Tìm khung Textarea chứa từ vựng trong file bài tập lẻ
+        const textarea = document.querySelector('textarea');
+        if (textarea) {
+            textarea.value = vocabData;
+            
+            // Kích hoạt sự kiện thay đổi dữ liệu
+            textarea.dispatchEvent(new Event('input', { bubbles: true }));
+            textarea.dispatchEvent(new Event('change', { bubbles: true }));
+
+            // Tự động kích hoạt nút Tạo bài tập nếu có
+            const renderBtn = document.querySelector('button[onclick*="generate"], button[onclick*="Render"], button[onclick*="render"], button[onclick*="Tao"]');
+            if (renderBtn) renderBtn.click();
+        }
+    });
+</script></body>
+</html>
