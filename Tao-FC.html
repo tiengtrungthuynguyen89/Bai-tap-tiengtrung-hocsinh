@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Công Cụ Tạo Flashcard Tiếng Trung (Tự Động Nghĩa Tiếng Việt)</title>
+    <title>Công Cụ Tạo Flashcard Tiếng Trung (Tự Động Nạp Kho & Nghĩa Tiếng Việt)</title>
     <!-- Thư viện PinyinPro, LZString & HanziWriter -->
     <script src="https://unpkg.com/pinyin-pro"></script>
     <script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
@@ -274,11 +274,12 @@
         .card-icon-btn:hover { background: #2563eb; color: #fff; border-color: #2563eb; }
 
         .card-hanzi {
-            font-size: 85px;
+            font-size: 75px;
             font-weight: bold;
             color: #000;
             line-height: 1;
             z-index: 2;
+            word-break: break-all;
         }
 
         .back-pinyin {
@@ -351,16 +352,16 @@
     <div class="sidebar">
         <h2>Cấu Hình Flashcard (8 Ô/Trang)</h2>
 
-        <button class="btn btn-reload" onclick="loadFromLocalStorage()">🔄 Nạp từ Kho từ vựng chung</button>
+        <button class="btn btn-reload" onclick="loadFromLocalStorage()">🔄 Đồng Bộ Lại Từ Kho Từ Vựng</button>
 
         <div class="form-group" style="margin-top: 10px;">
-            <label for="vocabulary">Nhập Chữ Hán (Chỉ cần dán chữ Hán vào đây):</label>
-            <textarea id="vocabulary" placeholder="Ví dụ chỉ cần nhập:&#10;学&#10;学习&#10;银行&#10;中国&#10;谢谢"></textarea>
-            <button class="btn btn-auto" onclick="processAutoDictionary()">⚡ Tự Động Tra Nghĩa & Pinyin</button>
+            <label for="vocabulary">Danh sách từ vựng (Tự động nạp):</label>
+            <textarea id="vocabulary" placeholder="Nhập Chữ Hán (Mỗi từ 1 dòng)&#10;Hoặc định dạng: Từ:Pinyin:Nghĩa"></textarea>
+            <button class="btn btn-auto" onclick="processAutoDictionary()">⚡ Cập Nhật Lại Flashcard</button>
         </div>
 
         <!-- BẢNG TÙY CHỈNH KHI CẦN SỬA MẶT SAU THỦ CÔNG -->
-        <h2>Tùy Chỉnh Chi Tiết (Sửa nghĩa nếu cần)</h2>
+        <h2>Tùy Chỉnh Chi Tiết (Sửa nghĩa/pinyin)</h2>
         <div class="vocab-editor" id="vocabEditor"></div>
 
         <h2>Thao Tác Ôn Tập</h2>
@@ -372,16 +373,16 @@
         <h2 style="margin-top: 12px; color: #d97706;">Bản Quyền & Chống Trộm</h2>
         <div class="form-group">
             <label for="watermark">Chữ mờ (Watermark):</label>
-            <input type="text" id="watermark" value="TIẾNG TRUNG THỦY NGUYỄN">
+            <input type="text" id="watermark" value="TIẾNG TRUNG THỦY NGUYỄN" onchange="generateFlashcards()">
         </div>
         <div class="row">
             <div class="form-group" style="flex:1;">
                 <label for="watermarkOpacity">Độ mờ (%):</label>
-                <input type="number" id="watermarkOpacity" value="12" min="5" max="50">
+                <input type="number" id="watermarkOpacity" value="12" min="5" max="50" onchange="generateFlashcards()">
             </div>
             <div class="form-group" style="flex:1;">
                 <label for="watermarkSize">Cỡ chữ (px):</label>
-                <input type="number" id="watermarkSize" value="18" min="10" max="40">
+                <input type="number" id="watermarkSize" value="18" min="10" max="40" onchange="generateFlashcards()">
             </div>
         </div>
 
@@ -389,11 +390,11 @@
         <div class="row">
             <div class="form-group" style="flex:1;">
                 <label for="borderColor">Màu viền:</label>
-                <input type="color" id="borderColor" value="#000000">
+                <input type="color" id="borderColor" value="#000000" onchange="generateFlashcards()">
             </div>
             <div class="form-group" style="flex:1;">
                 <label for="borderStyle">Kiểu viền:</label>
-                <select id="borderStyle">
+                <select id="borderStyle" onchange="generateFlashcards()">
                     <option value="solid" selected>Nét liền</option>
                     <option value="dashed">Nét đứt</option>
                     <option value="double">Viền đôi</option>
@@ -404,11 +405,11 @@
         <div class="row">
             <div class="form-group" style="flex:1;">
                 <label for="borderWidth">Độ dày (px):</label>
-                <input type="number" id="borderWidth" value="2" min="1" max="6">
+                <input type="number" id="borderWidth" value="2" min="1" max="6" onchange="generateFlashcards()">
             </div>
             <div class="form-group" style="flex:1;">
                 <label for="stickerOption">Sticker:</label>
-                <select id="stickerOption">
+                <select id="stickerOption" onchange="generateFlashcards()">
                     <option value="none">Không có</option>
                     <option value="🐼">🐼 Gấu Trúc</option>
                     <option value="🌸">🌸 Hoa Nhài</option>
@@ -420,7 +421,7 @@
 
         <div class="form-group">
             <label for="fontFamily">Font chữ Hán:</label>
-            <select id="fontFamily">
+            <select id="fontFamily" onchange="generateFlashcards()">
                 <option value="'KaiTi', 'STKaiti', 'SimSun', serif" selected>KaiTi (楷体)</option>
                 <option value="'SimSun', 'NSimSun', serif">SimSun (宋体)</option>
                 <option value="'Arial', sans-serif">Arial Bold</option>
@@ -451,25 +452,26 @@
     </div>
 
     <script>
-        // TỪ ĐIỂN TIẾNG VIỆT TÍCH HỢP TỰ ĐỘNG
+        // TỪ ĐIỂN HÁN - VIỆT PHỔ BIẾN TÍCH HỢP SẴN
         const zhDict = {
             "学": "Học tập", "习": "Luyện tập, thực hành", "学习": "Học tập",
             "行": "Đi, di chuyển, được", "银行": "Ngân hàng", "你": "Bạn / Anh / Chị",
             "好": "Tốt, đẹp, hay", "你好": "Xin chào", "谢": "Cảm ơn", "谢谢": "Cảm ơn",
             "爱": "Yêu, thương", "猫": "Con mèo", "狗": "Con chó", "中国": "Trung Quốc",
-            "人": "Người", "大": "Lớn, to", "小": "Nhỏ, bé", "水": "Nước",
+            "越南": "Việt Nam", "人": "Người", "大": "Lớn, to", "小": "Nhỏ, bé", "水": "Nước",
             "吃": "Ăn", "喝": "Uống", "茶": "Trà", "米饭": "Cơm", "家": "Gia đình, nhà",
             "爸爸": "Bố", "妈妈": "Mẹ", "哥哥": "Anh trai", "姐姐": "Chị gái",
             "弟弟": "Em trai", "妹妹": "Em gái", "老师": "Giáo viên", "学生": "Học sinh",
-            "朋友": "Bạn bè", "看": "Xem, nhìn, đọc", "听": "Nghe", "写": "Viết",
-            "买": "Mua", "卖": "Bán", "钱": "Tiền", "多": "Nhiều", "少": "Ít"
+            "朋友": "Bạn bè", "看": "Xem, nhìn, đọc", "听": "Nghe", "写": "Viết", "读": "Đọc",
+            "走": "Đi", "跑": "Chạy", "跳": "Nhảy", "玩": "Chơi", "高兴": "Vui vẻ",
+            "买": "Mua", "卖": "Bán", "钱": "Tiền", "多": "Nhiều", "少": "Ít", "再见": "Tạm biệt",
+            "花园": "Khu vườn", "蝴蝶": "Con bướm", "漂亮": "Đẹp", "消灭": "Tiêu diệt", "怪物": "Quái vật",
+            "过关": "Qua màn", "简单": "Đơn giản"
         };
 
         let currentItems = [];
         let allFlipped = false;
         let activeWriter = null;
-
-        const defaultChars = "学习\n银行\n你好\n谢谢\n中国\n老师\n朋友\n开心";
 
         function getAutoPinyin(text) {
             try {
@@ -478,6 +480,21 @@
                 }
             } catch(e) {}
             return "";
+        }
+
+        // HÀM TỰ ĐỘNG TRA NGHĨA ONLINE KHI CHƯA CÓ TRONG TỪ ĐIỂN TĨNH
+        async function translateToVietnamese(text) {
+            if (zhDict[text]) return zhDict[text];
+            try {
+                const res = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=zh-CN&tl=vi&dt=t&q=${encodeURIComponent(text)}`);
+                const data = await res.json();
+                if (data && data[0] && data[0][0] && data[0][0][0]) {
+                    const translated = data[0][0][0].trim();
+                    zhDict[text] = translated; // Lưu cache
+                    return translated;
+                }
+            } catch(e) {}
+            return `Nghĩa của (${text})`;
         }
 
         function speakHanzi(text, event) {
@@ -512,47 +529,58 @@
             document.getElementById('strokeModal').style.display = "none";
         }
 
+        // TỰ ĐỘNG NẠP DỮ LIỆU TỪ LƯU TRỮ VÀ HỢP NHẤT
         function loadFromLocalStorage() {
-            const vocabData = localStorage.getItem('zh_active_vocab');
-            if (vocabData && vocabData.trim() !== '') {
-                document.getElementById('vocabulary').value = vocabData;
+            const urlParams = new URLSearchParams(window.location.search);
+            const vocabFromUrl = urlParams.get('vocab');
+            const rawVocab = vocabFromUrl ? decodeURIComponent(vocabFromUrl) : (localStorage.getItem('zh_active_vocab') || "");
+
+            if (rawVocab && rawVocab.trim() !== '') {
+                document.getElementById('vocabulary').value = rawVocab;
                 processAutoDictionary();
-            } else {
-                alert("Chưa tìm thấy dữ liệu trong Kho từ vựng ('zh_active_vocab')!");
             }
         }
 
-        // TỰ ĐỘNG SINH NGHĨA VÀ PINYIN CHO DANH SÁCH TỪ VỰNG
-        function processAutoDictionary() {
+        // PHÂN TÍCH TỰ ĐỘNG & TRA NGHĨA BÀI TẬP
+        async function processAutoDictionary() {
             const rawText = document.getElementById('vocabulary').value;
             const lines = rawText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
 
             let itemList = [];
-            lines.forEach(line => {
-                // Nếu người dùng nhập dạng Hán | Nghĩa | Pinyin thì vẫn giữ nguyên
-                const parts = line.split('|').map(p => p.trim());
-                let hanzi = parts[0];
-                let meaning = "";
-                let pinyin = "";
+            for (let line of lines) {
+                // Tách định dạng Hán:Pinyin:Nghĩa hoặc Hán|Pinyin|Nghĩa
+                let parts = line.includes(':') ? line.split(':') : line.split('|');
+                parts = parts.map(p => p.trim());
 
-                if (parts.length >= 2) {
-                    meaning = parts[1];
-                    pinyin = parts[2] || getAutoPinyin(hanzi);
+                let hanzi = parts[0];
+                let pinyin = "";
+                let meaning = "";
+
+                if (parts.length >= 3) {
+                    pinyin = parts[1];
+                    meaning = parts[2];
+                } else if (parts.length === 2) {
+                    // Kiểm tra xem phần thứ 2 là pinyin hay nghĩa
+                    if (/^[a-zA-Z1-5\sāáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ]+$/.test(parts[1])) {
+                        pinyin = parts[1];
+                        meaning = await translateToVietnamese(hanzi);
+                    } else {
+                        meaning = parts[1];
+                        pinyin = getAutoPinyin(hanzi);
+                    }
                 } else {
-                    // Tự động tra từ điển nếu chỉ nhập Chữ Hán
                     pinyin = getAutoPinyin(hanzi);
-                    meaning = zhDict[hanzi] || `(Nghĩa từ ${hanzi})`;
+                    meaning = await translateToVietnamese(hanzi);
                 }
 
                 itemList.push({ hanzi, pinyin, meaning });
-            });
+            }
 
             currentItems = itemList;
             renderVocabEditor();
             generateFlashcards();
         }
 
-        // BẢNG CHỈNH SỬA TỦY CHỈNH THỦ CÔNG KHI NGHĨA CHƯA CHUẨN
         function renderVocabEditor() {
             const editorContainer = document.getElementById('vocabEditor');
             editorContainer.innerHTML = "";
@@ -597,7 +625,6 @@
         }
 
         function generateFlashcards() {
-            if (currentItems.length === 0) processAutoDictionary();
             renderItems(currentItems);
         }
 
@@ -716,7 +743,6 @@
             });
         }
 
-        // TẠO LINK CHIA SẺ VỚI TRẠNG THÁI HIỆN TẠI (ĐÃ XÁO TRỘN & ĐÃ SỬA NGHĨA/PINYIN)
         function generateShareLink() {
             if (currentItems.length === 0) {
                 alert("Chưa có từ vựng nào!");
@@ -733,7 +759,7 @@
 
                 if (navigator.clipboard) {
                     navigator.clipboard.writeText(studentUrl).then(() => {
-                        alert("✅ ĐÃ SAO CHÉP LINK HỌC SINH!\n\nHọc sinh sẽ nhận đúng THỨ TỰ BÀI TẬP ĐÃ XÁO TRỘN và NGHĨA/PINYIN đã tự động dịch.");
+                        alert("✅ ĐÃ SAO CHÉP LINK HỌC SINH!\n\nHọc sinh mở ra sẽ nhận đúng danh sách Flashcard đã tự động dịch nghĩa.");
                     }).catch(() => { prompt("Sao chép link dưới đây:", studentUrl); });
                 } else {
                     prompt("Sao chép link dưới đây:", studentUrl);
@@ -741,6 +767,7 @@
             }
         }
 
+        // TỰ ĐỘNG CHẠY NGAY KHI TRANG TẢI XONG
         window.onload = function() {
             const urlParams = new URLSearchParams(window.location.search);
             const compressedData = urlParams.get('z');
@@ -772,11 +799,10 @@
                 } catch (e) {
                     console.error("Lỗi giải nén:", e);
                 }
-            } else {
-                document.getElementById('vocabulary').value = defaultChars;
             }
 
-            processAutoDictionary();
+            // Tự động nạp kho từ vựng chung ngay lập tức
+            loadFromLocalStorage();
         };
     </script>
 </body>
