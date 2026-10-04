@@ -121,7 +121,7 @@
             <div id="noticeBox" class="hidden p-2.5 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg text-xs"></div>
 
             <div class="pt-2 space-y-2">
-                <button onclick="generateSheet()" class="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-md transition-all">✨ Tạo Bài Tập</button>
+                <button onclick="generateSheet()" class="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-md transition-all">🎲 Tạo & Xáo Trộn Bài Tập</button>
                 <button onclick="toggleAnswers()" class="w-full py-2 px-4 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-lg text-xs shadow-sm">Ẩn / Hiện Đáp Án Gợi Ý</button>
                 <button onclick="generateShareLink()" class="w-full py-2.5 px-4 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-lg shadow-md">🔗 Sao Chép Link Học Sinh</button>
                 <button onclick="window.print()" class="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg shadow-md">🖨️ In / Xuất PDF</button>
@@ -145,6 +145,16 @@
             generateSheet();
         }
 
+        function parseVocabLine(line) {
+            const parts = line.split(/[:：]/).map(s => s.trim());
+            const hanzi = parts[0] || '';
+            let pinyin = parts[1] || '';
+            if (!pinyin && hanzi) {
+                pinyin = getPinyin(hanzi);
+            }
+            return { hanzi, pinyin };
+        }
+
         function getPinyin(word) {
             try {
                 if (window.pinyinPro && window.pinyinPro.pinyin) {
@@ -154,13 +164,26 @@
             return '';
         }
 
+        // Thuật toán xáo trộn Fisher-Yates chuẩn
         function shuffle(arr) {
             let res = [...arr];
             for (let i = res.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
-                [res[i], res[j]] = [res[i], res[j]];
+                [res[i], res[j]] = [res[j], res[i]];
             }
             return res;
+        }
+
+        // Đảm bảo mảng xáo trộn chắc chắn khác vị trí gốc (tránh trường hợp ngẫu nhiên trùng khớp)
+        function forceShuffleDifferent(arr) {
+            if (arr.length <= 1) return [...arr];
+            let shuffled = shuffle(arr);
+            let attempts = 0;
+            while (attempts < 10 && shuffled.some((item, idx) => item === arr[idx])) {
+                shuffled = shuffle(arr);
+                attempts++;
+            }
+            return shuffled;
         }
 
         function toggleAnswers() {
@@ -169,11 +192,17 @@
 
         function generateSheet() {
             const rawText = document.getElementById('vocabInput').value;
-            const vocabList = [...new Set(rawText.split(/[\n,;\t]+/).map(s => s.trim()).filter(Boolean))];
+            const lines = rawText.split('\n').map(s => s.trim()).filter(Boolean);
 
-            if (vocabList.length === 0) return;
+            if (lines.length === 0) return;
 
-            const data = vocabList.map((word, idx) => ({ id: idx, hanzi: word, pinyin: getPinyin(word) }));
+            const parsedData = lines.map((line, idx) => {
+                const item = parseVocabLine(line);
+                return { id: idx, hanzi: item.hanzi, pinyin: item.pinyin };
+            }).filter(d => d.hanzi);
+
+            if (parsedData.length === 0) return;
+
             const quizCount = parseInt(document.getElementById('quizCount').value) || 6;
             const wordsPerQuiz = parseInt(document.getElementById('wordsPerQuiz').value) || 6;
 
@@ -199,29 +228,34 @@
 
             if (currentMode === 'match') {
                 for (let q = 0; q < quizCount; q++) {
-                    const chosen = shuffle(data).slice(0, wordsPerQuiz);
+                    const pool = shuffle(parsedData);
+                    const chosen = pool.slice(0, Math.min(wordsPerQuiz, pool.length));
+                    
+                    // Xáo trộn riêng biệt 2 cột để không bao giờ bị trùng hàng ngang
                     const leftCol = shuffle(chosen);
-                    const rightCol = shuffle(chosen);
+                    const rightCol = forceShuffleDifferent(chosen);
 
                     const card = document.createElement('div');
                     card.className = 'quiz-card border border-slate-300 rounded-lg p-3 bg-white shadow-sm flex flex-col justify-between';
 
                     let matchRows = '';
-                    for (let i = 0; i < wordsPerQuiz; i++) {
+                    for (let i = 0; i < leftCol.length; i++) {
+                        const rightItem = rightCol[i] || leftCol[i];
                         matchRows += `
-                            <div class="flex items-center justify-between my-1.5 gap-2 match-pair-row" data-correct-id="${leftCol[i].id}">
+                            <div class="flex items-center justify-between my-1.5 gap-2 match-pair-row">
                                 <div class="interactive-item left-item border border-slate-200 bg-slate-50 rounded px-2.5 py-1 text-sm font-semibold chinese-font w-1/2 text-slate-800 hover:bg-blue-50" 
                                      data-id="${leftCol[i].id}" onclick="handleLeftClick(this)">
                                     ${i + 1}. ${leftCol[i].hanzi} <span class="badge text-[10px] text-blue-600 font-normal"></span>
                                 </div>
                                 <div class="interactive-item right-item border border-slate-200 bg-slate-50 rounded px-2.5 py-1 text-xs text-slate-600 w-1/2 text-right hover:bg-amber-50" 
-                                     data-id="${rightCol[i].id}" data-label="${String.fromCharCode(97 + i)}" onclick="handleRightClick(this)">
-                                    ${String.fromCharCode(97 + i)}. ${rightCol[i].pinyin}
+                                     data-id="${rightItem.id}" data-label="${String.fromCharCode(97 + i)}" onclick="handleRightClick(this)">
+                                    ${String.fromCharCode(97 + i)}. ${rightItem.pinyin}
                                 </div>
                             </div>
                         `;
                     }
 
+                    // Tạo chuỗi đáp án chính xác
                     const answers = leftCol.map((lItem, i) => {
                         const rightIdx = rightCol.findIndex(rItem => rItem.id === lItem.id);
                         return `${i + 1}→${String.fromCharCode(97 + rightIdx)}`;
@@ -241,14 +275,19 @@
                     contentGrid.appendChild(card);
                 }
             } else {
-                // Dạng 2: Chọn Pinyin
+                // Dạng 2: Chọn Pinyin (Xáo trộn ngẫu nhiên đáp án A, B, C, D)
+                const shuffledPool = shuffle(parsedData);
                 for (let q = 0; q < quizCount; q++) {
-                    const target = data[q % data.length];
-                    let wrongOptions = shuffle(data.filter(d => d.id !== target.id)).slice(0, 3).map(d => d.pinyin);
+                    const target = shuffledPool[q % shuffledPool.length];
+                    
+                    // Lấy các phương án sai ngẫu nhiên
+                    let wrongOptions = shuffle(parsedData.filter(d => d.id !== target.id)).slice(0, 3).map(d => d.pinyin);
                     while (wrongOptions.length < 3) wrongOptions.push("—");
 
+                    // Xáo trộn vị trí của đáp án đúng trong 4 lựa chọn A, B, C, D
                     const options = shuffle([target.pinyin, ...wrongOptions]);
-                    const correctChar = String.fromCharCode(65 + options.indexOf(target.pinyin));
+                    const correctIndex = options.indexOf(target.pinyin);
+                    const correctChar = String.fromCharCode(65 + correctIndex);
 
                     const card = document.createElement('div');
                     card.className = 'quiz-card border border-slate-300 rounded-lg p-3 bg-white shadow-sm flex flex-col justify-between';
@@ -280,7 +319,6 @@
 
             let footerHtml = footer ? `<div class="border-t border-slate-300 pt-2 mt-4 text-center text-xs text-slate-500">${footer}</div>` : '';
 
-            // Đưa phần nội dung trực tiếp vào page
             page.innerHTML = `
                 <div>
                     ${headerHtml}
@@ -319,17 +357,13 @@
             selectedLeftItem = null;
         }
 
-        /* --- XỬ LÝ CHỌN PINYIN ĐÃ SỬA LỖI (HIGHLIGHT RÕ RÀNG) --- */
+        /* --- XỬ LÝ CHỌN PINYIN --- */
         function selectChoice(el) {
             const grid = el.closest('.choices-grid');
-            
-            // Bỏ chọn tất cả các đáp án khác trong cùng câu hỏi
             grid.querySelectorAll('.interactive-choice').forEach(c => {
                 c.classList.remove('selected-choice');
                 c.dataset.userSelected = "false";
             });
-            
-            // Đánh dấu đáp án được chọn
             el.classList.add('selected-choice');
             el.dataset.userSelected = "true";
         }
@@ -360,7 +394,6 @@
                         const isCorrect = c.dataset.correct === "true";
                         const isSelected = c.dataset.userSelected === "true";
 
-                        // Xóa class highlight tạm thời
                         c.classList.remove('selected-choice');
 
                         if (isSelected && isCorrect) {
@@ -368,26 +401,25 @@
                         } else if (isSelected && !isCorrect) {
                             c.classList.add('is-wrong');
                         } else if (!isSelected && isCorrect) {
-                            c.classList.add('is-correct'); // Hiện xanh đáp án đúng khi học sinh chọn sai hoặc chưa chọn
+                            c.classList.add('is-correct');
                         }
                     });
                 });
             }
 
-            // Mở khung đáp án bên dưới
             page.classList.add('show-answers');
             alert("Đã kiểm tra xong! Đáp án đúng hiển thị màu xanh lá, đáp án chọn sai hiển thị màu đỏ.");
         }
 
-        /* --- TỰ ĐỘNG SAO CHÉP LINK BÀI TẬP (ĐỒNG BỘ CẤU HÌNH) --- */
+        /* --- SAO CHÉP LINK BÀI TẬP --- */
         function generateShareLink() {
             const rawText = document.getElementById('vocabInput').value;
-            const vocabList = [...new Set(rawText.split(/[\n,;\t]+/).map(s => s.trim()).filter(Boolean))];
-            if (vocabList.length === 0) return alert("Vui lòng nhập từ vựng!");
+            const lines = rawText.split('\n').map(s => s.trim()).filter(Boolean);
+            if (lines.length === 0) return alert("Vui lòng nhập từ vựng!");
 
             const config = {
                 mode: currentMode,
-                vocab: vocabList,
+                vocabText: rawText,
                 title: document.getElementById('customTitle').value,
                 subtitle: document.getElementById('customSubtitle').value,
                 footer: document.getElementById('customFooter').value,
@@ -428,6 +460,29 @@
             document.body.removeChild(textArea);
         }
 
+        // TỰ ĐỘNG NẠP TỪ VỰNG TỪ KHO HOẶC THÔNG BÁO TỪ INDEX.HTML
+        function loadVocabFromStorage() {
+            const activeVocab = localStorage.getItem('zh_active_vocab');
+            if (activeVocab) {
+                const input = document.getElementById('vocabInput');
+                if (input) {
+                    input.value = activeVocab;
+                    generateSheet();
+                }
+            }
+        }
+
+        // Đón nhận tín hiệu postMessage từ index.html khi bấm xáo trộn
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.type === 'UPDATE_VOCAB') {
+                const input = document.getElementById('vocabInput');
+                if (input && event.data.vocab !== undefined) {
+                    input.value = event.data.vocab;
+                    generateSheet();
+                }
+            }
+        });
+
         window.onload = function() {
             const urlParams = new URLSearchParams(window.location.search);
             const compressedData = urlParams.get('z');
@@ -438,65 +493,27 @@
             if (compressedData && typeof LZString !== 'undefined') {
                 try {
                     const decompressed = LZString.decompressFromEncodedURIComponent(compressedData);
-                    if (decompressed) {
-                        // Kiểm tra cấu hình JSON
-                        if (decompressed.startsWith('{')) {
-                            const config = JSON.parse(decompressed);
-                            if (config.vocab && config.vocab.length > 0) {
-                                document.getElementById('vocabInput').value = config.vocab.join("\n");
-                                if (config.title !== undefined) document.getElementById('customTitle').value = config.title;
-                                if (config.subtitle !== undefined) document.getElementById('customSubtitle').value = config.subtitle;
-                                if (config.footer !== undefined) document.getElementById('customFooter').value = config.footer;
-                                if (config.quizCount !== undefined) document.getElementById('quizCount').value = config.quizCount;
-                                if (config.wordsPerQuiz !== undefined) document.getElementById('wordsPerQuiz').value = config.wordsPerQuiz;
+                    if (decompressed && decompressed.startsWith('{')) {
+                        const config = JSON.parse(decompressed);
+                        if (config.vocabText) document.getElementById('vocabInput').value = config.vocabText;
+                        if (config.title !== undefined) document.getElementById('customTitle').value = config.title;
+                        if (config.subtitle !== undefined) document.getElementById('customSubtitle').value = config.subtitle;
+                        if (config.footer !== undefined) document.getElementById('customFooter').value = config.footer;
+                        if (config.quizCount !== undefined) document.getElementById('quizCount').value = config.quizCount;
+                        if (config.wordsPerQuiz !== undefined) document.getElementById('wordsPerQuiz').value = config.wordsPerQuiz;
 
-                                if (config.mode === 'choice') {
-                                    switchMode('choice');
-                                    return;
-                                }
-                            }
-                        } else {
-                            // Tương thích ngược dạng legacy text
-                            const parts = decompressed.split('|');
-                            const mode = parts[1];
-                            const words = parts.slice(2);
-
-                            if (words.length > 0) {
-                                document.getElementById('vocabInput').value = words.join("\n");
-                                if (mode === 'choice') {
-                                    switchMode('choice');
-                                    return;
-                                }
-                            }
+                        if (config.mode === 'choice') {
+                            switchMode('choice');
+                            return;
                         }
                     }
                 } catch (e) {}
             } else {
-                document.getElementById('vocabInput').value = defaultVocab.join("\n");
+                loadVocabFromStorage();
             }
 
             generateSheet();
         };
     </script>
-<script>
-    // Tự động lấy từ vựng từ Kho khi file lẻ này được tải
-    window.addEventListener('DOMContentLoaded', () => {
-        const vocabData = localStorage.getItem('zh_active_vocab');
-        if (!vocabData) return;
-
-        // Tìm khung Textarea chứa từ vựng trong file bài tập lẻ
-        const textarea = document.querySelector('textarea');
-        if (textarea) {
-            textarea.value = vocabData;
-            
-            // Kích hoạt sự kiện thay đổi dữ liệu
-            textarea.dispatchEvent(new Event('input', { bubbles: true }));
-            textarea.dispatchEvent(new Event('change', { bubbles: true }));
-
-            // Tự động kích hoạt nút Tạo bài tập nếu có
-            const renderBtn = document.querySelector('button[onclick*="generate"], button[onclick*="Render"], button[onclick*="render"], button[onclick*="Tao"]');
-            if (renderBtn) renderBtn.click();
-        }
-    });
-</script></body>
+</body>
 </html>

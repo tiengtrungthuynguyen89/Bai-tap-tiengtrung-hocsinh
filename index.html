@@ -12,38 +12,56 @@
 </head>
 <body class="bg-slate-100 font-sans flex flex-col h-screen overflow-hidden">
 
+    <!-- HEADER / NAVIGATION -->
     <header class="bg-white shadow-md border-b border-slate-200 z-10 flex-shrink-0">
         <div class="max-w-7xl mx-auto px-4 flex justify-between items-center h-16">
             <h1 class="text-xl font-bold text-slate-800 flex items-center gap-2">
                 <span>📚</span> Bộ Công Cụ Tiếng Trung
             </h1>
             
-            <nav class="flex space-x-1 sm:space-x-2">
-                <button onclick="switchTab('repo')" id="tab-btn-repo" class="tab-btn px-3 py-2 text-xs sm:text-sm font-semibold rounded-lg text-blue-600 bg-blue-50 border border-blue-200">🗂️ Kho Từ Vựng</button>
-                <button onclick="switchTab('pinyin')" id="tab-btn-pinyin" class="tab-btn px-3 py-2 text-xs sm:text-sm font-semibold rounded-lg text-slate-600 hover:bg-slate-100">🎯 Tìm Pinyin</button>
-                <button onclick="switchTab('muc-tieu')" id="tab-btn-muc-tieu" class="tab-btn px-3 py-2 text-xs sm:text-sm font-semibold rounded-lg text-slate-600 hover:bg-slate-100">🔍 Tìm Từ Mục Tiêu</button>
-                <button onclick="switchTab('noi-tu')" id="tab-btn-noi-tu" class="tab-btn px-3 py-2 text-xs sm:text-sm font-semibold rounded-lg text-slate-600 hover:bg-slate-100">🔗 Nối Từ & Pinyin</button>
-                <button onclick="switchTab('flashcard')" id="tab-btn-flashcard" class="tab-btn px-3 py-2 text-xs sm:text-sm font-semibold rounded-lg text-slate-600 hover:bg-slate-100">🎴 Flashcard</button>
-                <button onclick="switchTab('sap-xep')" id="tab-btn-sap-xep" class="tab-btn px-3 py-2 text-xs sm:text-sm font-semibold rounded-lg text-slate-600 hover:bg-slate-100">🧩 Sắp Xếp Câu</button>
+            <nav class="flex space-x-1 sm:space-x-2 overflow-x-auto py-1">
+                <button onclick="switchTab('repo')" id="tab-btn-repo" class="tab-btn px-3 py-2 text-xs sm:text-sm font-semibold rounded-lg text-blue-600 bg-blue-50 border border-blue-200 whitespace-nowrap">🗂️ Kho Từ Vựng</button>
+                <button onclick="switchTab('pinyin')" id="tab-btn-pinyin" class="tab-btn px-3 py-2 text-xs sm:text-sm font-semibold rounded-lg text-slate-600 hover:bg-slate-100 whitespace-nowrap">🎯 Tìm Pinyin</button>
+                <button onclick="switchTab('muc-tieu')" id="tab-btn-muc-tieu" class="tab-btn px-3 py-2 text-xs sm:text-sm font-semibold rounded-lg text-slate-600 hover:bg-slate-100 whitespace-nowrap">🔍 Tìm Từ Mục Tiêu</button>
+                <button onclick="switchTab('noi-tu')" id="tab-btn-noi-tu" class="tab-btn px-3 py-2 text-xs sm:text-sm font-semibold rounded-lg text-slate-600 hover:bg-slate-100 whitespace-nowrap">🔗 Nối Từ & Pinyin</button>
+                <button onclick="switchTab('flashcard')" id="tab-btn-flashcard" class="tab-btn px-3 py-2 text-xs sm:text-sm font-semibold rounded-lg text-slate-600 hover:bg-slate-100 whitespace-nowrap">🎴 Flashcard</button>
+                <button onclick="switchTab('sap-xep')" id="tab-btn-sap-xep" class="tab-btn px-3 py-2 text-xs sm:text-sm font-semibold rounded-lg text-slate-600 hover:bg-slate-100 whitespace-nowrap">🧩 Sắp Xếp Câu</button>
             </nav>
         </div>
     </header>
 
+    <!-- MAIN CONTENT AREA -->
     <main class="flex-grow w-full h-full relative bg-slate-200 overflow-hidden">
         <!-- Tab Kho Từ Vựng -->
-        <div id="tab-repo" class="tab-content active bg-slate-100 p-6 overflow-y-auto">
-            <div class="max-w-5xl mx-auto space-y-6">
-                <div class="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+        <div id="tab-repo" class="tab-content active bg-slate-100 p-4 sm:p-6 overflow-y-auto">
+            <div class="max-w-5xl mx-auto space-y-6 pb-20">
+                
+                <!-- Thanh Công Cụ Trên Đầu -->
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-slate-200">
                     <div>
                         <h2 class="text-lg font-bold text-slate-800">🗂️ Quản Lý Kho Từ Vựng Dùng Chung</h2>
-                        <p class="text-xs text-slate-500">Bấm <b>"🚀 Áp Dụng Kho Này"</b> để đẩy từ vựng sang tất cả các bài tập lẻ.</p>
+                        <p class="text-xs text-slate-500 mt-0.5">Nội dung kho từ được chọn sẽ tự động áp dụng và xáo trộn vị trí ngẫu nhiên ở tất cả các bài tập.</p>
                     </div>
-                    <button onclick="addNewRepo()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs shadow">➕ Thêm Kho Mới</button>
+                    <div class="flex items-center gap-2 w-full sm:w-auto">
+                        <button onclick="openCreateModal()" class="flex-1 sm:flex-none px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs shadow transition">
+                            ➕ Thêm Kho Mới
+                        </button>
+                    </div>
                 </div>
+
+                <!-- Danh Sách Các Kho Từ Vựng -->
                 <div id="repoCardsList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+
+                <!-- Nút Thêm Kho Nằm Dưới Cùng (Giải quyết phiền phức khi danh sách dài) -->
+                <div class="pt-4 border-t border-slate-300 flex justify-center">
+                    <button onclick="openCreateModal()" class="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm shadow-md transition flex items-center gap-2">
+                        <span>➕</span> Thêm Kho Từ Vựng Mới
+                    </button>
+                </div>
             </div>
         </div>
 
+        <!-- Các Tab Bài Tập Con -->
         <iframe id="tab-pinyin" class="tab-content" src="./tim-pinyin.html"></iframe>
         <iframe id="tab-muc-tieu" class="tab-content" src="./tim-tu-muc-tieu.html"></iframe>
         <iframe id="tab-noi-tu" class="tab-content" src="./noi-tu.html"></iframe>
@@ -51,10 +69,45 @@
         <iframe id="tab-sap-xep" class="tab-content" src="./sap-xep-cau.html"></iframe>
     </main>
 
+    <!-- MODAL THÊM KHO MỚI -->
+    <div id="createRepoModal" class="fixed inset-0 bg-slate-900/50 hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6 space-y-4">
+            <h3 class="text-base font-bold text-slate-800">➕ Tạo Kho Từ Vựng Mới</h3>
+            <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Tên Kho Từ Vựng:</label>
+                <input type="text" id="newRepoName" placeholder="Ví dụ: Bài 5 - Mua Sắm..." class="w-full p-2 border border-slate-300 rounded text-xs focus:ring-2 focus:ring-blue-500 outline-none">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Danh Sách Từ Ban Đầu (Mỗi từ 1 dòng hoặc Từ:Pinyin:Nghĩa):</label>
+                <textarea id="newRepoVocab" placeholder="苹果:píngguǒ:Quả táo&#10;香蕉:xiāngjiāo:Quả chuối" class="w-full h-32 p-2 border border-slate-300 rounded text-xs focus:ring-2 focus:ring-blue-500 outline-none resize-none"></textarea>
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+                <button onclick="closeCreateModal()" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-lg text-xs">Hủy</button>
+                <button onclick="saveNewRepo()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs shadow">Lưu Kho Mới</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL ĐỔI TÊN KHO -->
+    <div id="renameRepoModal" class="fixed inset-0 bg-slate-900/50 hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-xl shadow-xl max-w-sm w-full p-6 space-y-4">
+            <h3 class="text-base font-bold text-slate-800">✏️ Sửa Tên Kho Từ Vựng</h3>
+            <input type="hidden" id="renameTargetId">
+            <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Tên Kho Mới:</label>
+                <input type="text" id="editRepoName" class="w-full p-2 border border-slate-300 rounded text-xs focus:ring-2 focus:ring-blue-500 outline-none">
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+                <button onclick="closeRenameModal()" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-lg text-xs">Hủy</button>
+                <button onclick="saveRenameRepo()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs shadow">Đổi Tên</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const DEFAULT_REPOS = [
             { id: 'hsk1', name: 'HSK 1 - Cơ Bản', vocab: "你好\n老师\n学生\n中国\n越南\n朋友\n再见\n谢谢\n高兴\n学习" },
-            { id: 'hsk2', name: 'HSK 2 - Động Từ', vocab: "看:kàn\n听:tīng\n读:dú\n写:xiě\n走:zǒu\n跑:pǎo\n跳:tiào\n喝:hē\n吃:chī\n玩:wán" },
+            { id: 'hsk2', name: 'HSK 2 - Động Từ', vocab: "看:kàn:xem\n听:tīng:nghe\n读:dú:đọc\n写:xiě:viết\n走:zǒu:đi\n跑:pǎo:chạy\n跳:tiào:nhảy\n喝:hē:uống\n吃:chī:ăn\n玩:wán:chơi" },
             { id: 'sentences', name: 'Mẫu Câu Sắp Xếp', vocab: "花园里有一只漂亮的蝴蝶\n消灭所有怪物后才能过关\n我不瞒你说，这件事情很简单" }
         ];
 
@@ -70,56 +123,89 @@
             }
         }
 
+        // Phát tin nhắn báo cho tất cả các iframe bài tập cập nhật & xáo trộn
+        function notifyAllIframes(vocabText) {
+            const iframes = document.querySelectorAll('iframe');
+            iframes.forEach(iframe => {
+                if (iframe.contentWindow) {
+                    iframe.contentWindow.postMessage({
+                        type: 'UPDATE_VOCAB',
+                        vocab: vocabText,
+                        shuffle: true
+                    }, '*');
+                }
+            });
+        }
+
         function switchTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.className = "tab-btn px-3 py-2 text-xs sm:text-sm font-semibold rounded-lg text-slate-600 hover:bg-slate-100");
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.className = "tab-btn px-3 py-2 text-xs sm:text-sm font-semibold rounded-lg text-slate-600 hover:bg-slate-100 whitespace-nowrap");
 
             document.getElementById(`tab-${tabId}`).classList.add('active');
-            document.getElementById(`tab-btn-${tabId}`).className = "tab-btn px-3 py-2 text-xs sm:text-sm font-semibold rounded-lg text-blue-600 bg-blue-50 border border-blue-200";
+            document.getElementById(`tab-btn-${tabId}`).className = "tab-btn px-3 py-2 text-xs sm:text-sm font-semibold rounded-lg text-blue-600 bg-blue-50 border border-blue-200 whitespace-nowrap";
 
             if (tabId === 'repo') {
                 renderRepoManager();
             } else {
-                // Reload lại iframe khi bật tab để bắt buộc nhận từ vựng mới nhất
+                // Đảm bảo iframe nhận từ vựng mới nhất khi chuyển tab
+                const activeVocab = localStorage.getItem('zh_active_vocab') || '';
                 const iframe = document.getElementById(`tab-${tabId}`);
-                if (iframe) iframe.src = iframe.src;
+                if (iframe && iframe.contentWindow) {
+                    iframe.contentWindow.postMessage({
+                        type: 'UPDATE_VOCAB',
+                        vocab: activeVocab,
+                        shuffle: true
+                    }, '*');
+                }
             }
         }
 
         function renderRepoManager() {
             const listEl = document.getElementById('repoCardsList');
-            listEl.innerHTML = repositories.map(r => `
-                <div class="bg-white border ${r.id === activeRepoId ? 'border-2 border-blue-600 shadow-md' : 'border-slate-300'} rounded-xl p-4 flex flex-col justify-between">
+            listEl.innerHTML = repositories.map(r => {
+                const isActive = r.id === activeRepoId;
+                return `
+                <div id="card-${r.id}" class="bg-white border ${isActive ? 'border-2 border-blue-600 shadow-md ring-2 ring-blue-100' : 'border-slate-300'} rounded-xl p-4 flex flex-col justify-between transition-all">
                     <div>
                         <div class="flex justify-between items-center mb-2 gap-2">
                             <h3 class="font-bold text-slate-800 text-sm truncate flex-1" title="${r.name}">${r.name}</h3>
                             <div class="flex items-center gap-1">
-                                <button onclick="renameRepo('${r.id}')" title="Sửa tên kho" class="p-1 hover:bg-slate-100 text-slate-600 rounded text-xs">✏️</button>
-                                ${repositories.length > 1 ? `<button onclick="deleteRepo('${r.id}')" title="Xóa kho" class="p-1 hover:bg-red-50 text-red-500 rounded text-xs">🗑️️</button>` : ''}
+                                <button onclick="openRenameModal('${r.id}')" title="Sửa tên kho" class="p-1 hover:bg-slate-100 text-slate-600 rounded text-xs">✏️</button>
+                                ${repositories.length > 1 ? `<button onclick="deleteRepo('${r.id}')" title="Xóa kho" class="p-1 hover:bg-red-50 text-red-500 rounded text-xs">🗑</button>` : ''}
                             </div>
                         </div>
-                        ${r.id === activeRepoId ? '<span class="inline-block mb-2 bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">ĐANG DÙNG</span>' : ''}
-                        <textarea onchange="updateRepoVocab('${r.id}', this.value)" class="w-full h-28 p-2 text-xs border border-slate-300 rounded resize-none focus:outline-none focus:border-blue-500">${r.vocab}</textarea>
+                        ${isActive ? '<span class="inline-block mb-2 bg-blue-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">ĐANG KÍCH HOẠT</span>' : '<span class="inline-block mb-2 bg-slate-200 text-slate-600 text-[10px] px-2 py-0.5 rounded-full font-semibold">Chờ áp dụng</span>'}
+                        <textarea onchange="updateRepoVocab('${r.id}', this.value)" placeholder="Nhập từ vựng vào đây..." class="w-full h-32 p-2 text-xs border border-slate-300 rounded resize-none focus:outline-none focus:border-blue-500 font-mono">${r.vocab}</textarea>
                     </div>
-                    <button onclick="applyRepo('${r.id}')" class="mt-3 w-full py-1.5 bg-blue-600 text-white text-xs font-bold rounded hover:bg-blue-700 transition">🚀 Áp Dụng Kho Này</button>
+                    <div class="mt-3 space-y-1.5">
+                        <button onclick="applyRepo('${r.id}')" class="w-full py-2 ${isActive ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-blue-600 hover:bg-blue-700'} text-white text-xs font-bold rounded shadow transition flex items-center justify-center gap-1">
+                            <span>🚀</span> ${isActive ? 'Cập Nhật & Xáo Trộn Bài Tập' : 'Áp Dụng Kho Này'}
+                        </button>
+                    </div>
                 </div>
-            `).join('');
+            `}).join('');
         }
 
         function updateRepoVocab(id, val) {
             const r = repositories.find(item => item.id === id);
-            if (r) { r.vocab = val; saveState(); }
+            if (r) {
+                r.vocab = val;
+                saveState();
+                if (id === activeRepoId) {
+                    notifyAllIframes(val);
+                }
+            }
         }
 
-        function renameRepo(id) {
-            const r = repositories.find(item => item.id === id);
-            if (!r) return;
-            const newName = prompt("Nhập tên mới cho kho từ vựng:", r.name);
-            if (newName && newName.trim() !== '') {
-                r.name = newName.trim();
-                saveState();
-                renderRepoManager();
+        function applyRepo(id) {
+            activeRepoId = id;
+            saveState();
+            renderRepoManager();
+            const curRepo = repositories.find(r => r.id === id);
+            if (curRepo) {
+                notifyAllIframes(curRepo.vocab);
             }
+            alert("✅ Đã kích hoạt kho từ vựng và gửi lệnh xáo trộn sang toàn bộ các tab bài tập!");
         }
 
         function deleteRepo(id) {
@@ -137,23 +223,74 @@
             }
         }
 
-        function applyRepo(id) {
-            activeRepoId = id;
-            saveState();
-            renderRepoManager();
-            alert("✅ Đã áp dụng kho từ vựng! Chuyển sang các tab bài tập để xem kết quả.");
+        /* MODAL CẤU HÌNH THÊM MỚI KHÔ */
+        function openCreateModal() {
+            document.getElementById('newRepoName').value = '';
+            document.getElementById('newRepoVocab').value = '';
+            document.getElementById('createRepoModal').classList.remove('hidden');
+            document.getElementById('createRepoModal').classList.add('flex');
         }
 
-        function addNewRepo() {
-            const name = prompt("Nhập tên kho mới:");
-            if (!name || name.trim() === '') return;
+        function closeCreateModal() {
+            document.getElementById('createRepoModal').classList.add('hidden');
+            document.getElementById('createRepoModal').classList.remove('flex');
+        }
+
+        function saveNewRepo() {
+            const name = document.getElementById('newRepoName').value.trim();
+            const vocab = document.getElementById('newRepoVocab').value.trim();
+
+            if (!name) {
+                alert("Vui lòng nhập tên kho từ vựng!");
+                return;
+            }
+
             const newId = 'repo_' + Date.now();
-            repositories.push({ id: newId, name: name.trim(), vocab: "你好\n谢谢" });
+            repositories.push({ id: newId, name: name, vocab: vocab || "你好\n谢谢" });
             activeRepoId = newId;
             saveState();
+            closeCreateModal();
             renderRepoManager();
+
+            // Tự động cuộn xuống thẻ vừa thêm
+            setTimeout(() => {
+                const el = document.getElementById(`card-${newId}`);
+                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 100);
         }
 
+        /* MODAL SỬA TÊN KHO */
+        function openRenameModal(id) {
+            const r = repositories.find(item => item.id === id);
+            if (!r) return;
+            document.getElementById('renameTargetId').value = id;
+            document.getElementById('editRepoName').value = r.name;
+            document.getElementById('renameRepoModal').classList.remove('hidden');
+            document.getElementById('renameRepoModal').classList.add('flex');
+        }
+
+        function closeRenameModal() {
+            document.getElementById('renameRepoModal').classList.add('hidden');
+            document.getElementById('renameRepoModal').classList.remove('flex');
+        }
+
+        function saveRenameRepo() {
+            const id = document.getElementById('renameTargetId').value;
+            const newName = document.getElementById('editRepoName').value.trim();
+            if (!newName) {
+                alert("Vui lòng nhập tên kho!");
+                return;
+            }
+            const r = repositories.find(item => item.id === id);
+            if (r) {
+                r.name = newName;
+                saveState();
+                renderRepoManager();
+            }
+            closeRenameModal();
+        }
+
+        // Khởi tạo trang ban đầu
         saveState();
         renderRepoManager();
     </script>

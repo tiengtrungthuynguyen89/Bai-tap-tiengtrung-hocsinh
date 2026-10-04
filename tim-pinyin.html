@@ -134,7 +134,7 @@
             text-align: center;
             padding: 2px;
             line-height: 1.1;
-            word-break: break-all; /* Tự động xuống dòng nếu từ quá dài */
+            word-break: break-all;
             hyphens: auto;
         }
 
@@ -210,7 +210,7 @@
                 <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
                     Mẫu câu hướng dẫn:
                 </label>
-                <input type="text" id="instructionTemplate" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value='Tìm ra pinyin của từ "{word}"'>
+                <input type="text" id="instructionTemplate" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value='Tìm ra pinyin của từ "{word}"'>
             </div>
 
             <div class="grid grid-cols-2 gap-3">
@@ -234,18 +234,18 @@
             <div class="grid grid-cols-2 gap-3">
                 <div>
                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Số bong bóng:</label>
-                    <input type="number" id="bubbleCount" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="18" min="8" max="30">
+                    <input type="number" id="bubbleCount" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="10" min="4" max="30">
                 </div>
                 <div>
                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Số đáp án đúng:</label>
-                    <input type="number" id="targetRepeatCount" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="4" min="1" max="10">
+                    <input type="number" id="targetRepeatCount" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="3" min="1" max="10">
                 </div>
             </div>
 
             <div class="grid grid-cols-3 gap-2">
                 <div>
                     <label class="block text-[11px] font-bold text-slate-700 mb-1">Cỡ tâm (px):</label>
-                    <input type="number" id="centerFontSize" class="w-full p-1.5 border border-slate-300 rounded-lg text-sm" value="85">
+                    <input type="number" id="centerFontSize" class="w-full p-1.5 border border-slate-300 rounded-lg text-sm" value="70">
                 </div>
                 <div>
                     <label class="block text-[11px] font-bold text-slate-700 mb-1">Đường kính (px):</label>
@@ -280,7 +280,7 @@
 
         function calculateBubblePositions(count) {
             const positions = [];
-            const ring1Capacity = Math.min(8, Math.floor(count * 0.4));
+            const ring1Capacity = Math.min(6, Math.floor(count * 0.4));
             const ring2Capacity = count - ring1Capacity;
             const r1X = 28, r1Y = 26;
             const r2X = 42, r2Y = 38;
@@ -312,12 +312,10 @@
         function formatPinyinWithLineBreak(pinyinText) {
             if (!pinyinText) return "";
             
-            // 1. Nếu có dấu cách giữa các từ/âm tiết
             if (pinyinText.includes(" ")) {
                 return pinyinText.replace(/\s+/g, "<br>");
             }
             
-            // 2. Nếu chuỗi dài > 5 ký tự không có khoảng trắng, tự động ngắt đôi cân đối
             if (pinyinText.length > 5) {
                 const mid = Math.floor(pinyinText.length / 2);
                 return pinyinText.slice(0, mid) + "<br>" + pinyinText.slice(mid);
@@ -340,14 +338,14 @@
         }
 
         function generateSheet(createNewState = true) {
-            const vocabList = parseInput();
+            let vocabList = parseInput();
 
             if (vocabList.length === 0) {
                 alert("Vui lòng nhập định dạng chữ:pinyin (ví dụ: 看:kàn)!");
                 return;
             }
 
-            const instructionTemplate = document.getElementById('instructionTemplate').value || '找出 "{word}" 的拼音并涂色';
+            const instructionTemplate = document.getElementById('instructionTemplate').value || 'Tìm ra pinyin của từ "{word}"';
             const itemsPerPage = parseInt(document.getElementById('itemsPerPage').value);
             const fontFamily = document.getElementById('fontFamily').value;
             const bubbleCount = parseInt(document.getElementById('bubbleCount').value);
@@ -361,6 +359,9 @@
             previewArea.innerHTML = "";
 
             if (createNewState) {
+                // Xáo trộn ngẫu nhiên danh sách từ vựng đầu vào
+                vocabList.sort(() => Math.random() - 0.5);
+
                 generatedState = [];
                 vocabList.forEach((itemObj) => {
                     let bubbleItems = [];
@@ -384,6 +385,7 @@
                         }
                     }
 
+                    // Xáo trộn ngẫu nhiên vị trí bong bóng
                     bubbleItems.sort(() => Math.random() - 0.5);
                     const positions = calculateBubblePositions(bubbleItems.length);
 
@@ -448,10 +450,8 @@
                     bubble.style.width = bubbleSize + 'px';
                     bubble.style.height = bubbleSize + 'px';
 
-                    // HIỂN THỊ PINYIN TỰ ĐỘNG XUỐNG DÒNG
                     bubble.innerHTML = formatPinyinWithLineBreak(item.pinyin);
 
-                    // GIỮ CỠ CHỮ TO ĐỦ ĐỌC VỚI GIỚI HẠN TỐI THIỂU RÕ RÀNG
                     const rawLen = item.pinyin.length;
                     let calculatedFontSize = maxFontSize;
                     if (rawLen > 6) {
@@ -461,12 +461,10 @@
                     }
                     bubble.style.fontSize = calculatedFontSize + 'px';
 
-                    // XỬ LÝ CLICK CHỌN
                     bubble.onclick = function() {
                         if (this.classList.contains('correct')) return;
 
                         if (item.isTarget) {
-                            // BÓNG ĐÚNG -> Màu Xanh lá & giữ nguyên
                             this.classList.remove('wrong');
                             this.classList.add('correct');
                             foundCorrectCount++;
@@ -476,7 +474,6 @@
                                 triggerFireworks();
                             }
                         } else {
-                            // BÓNG SAI -> Màu Tím chớp lên rồi biến mất màu tím (trở về màu trắng)
                             this.classList.add('wrong');
                             setTimeout(() => {
                                 this.classList.remove('wrong');
@@ -531,38 +528,7 @@
             }
         }
 
-        window.onload = function() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const compressedData = urlParams.get('z');
-            const isStudent = urlParams.get('s') === '1';
-
-            if (isStudent) document.body.classList.add('student-mode');
-
-            if (compressedData && typeof LZString !== 'undefined') {
-                try {
-                    const decompressed = LZString.decompressFromEncodedURIComponent(compressedData);
-                    if (decompressed) {
-                        const data = JSON.parse(decompressed);
-                        document.getElementById('vocabInput').value = data.vocabInput || '';
-                        document.getElementById('instructionTemplate').value = data.instructionTemplate || '找出 "{word}" 的拼音并涂色';
-                        document.getElementById('itemsPerPage').value = data.itemsPerPage || '6';
-                        document.getElementById('fontFamily').value = data.fontFamily || "'Noto Serif SC', 'KaiTi', serif";
-                        document.getElementById('bubbleCount').value = data.bubbleCount || '18';
-                        document.getElementById('targetRepeatCount').value = data.targetRepeatCount || '4';
-                        document.getElementById('centerFontSize').value = data.centerFontSize || '85';
-                        document.getElementById('bubbleSize').value = data.bubbleSize || '44';
-                        document.getElementById('bubbleFontSize').value = data.bubbleFontSize || '16';
-
-                        generatedState = data.state || [];
-                        generateSheet(false);
-                        return;
-                    }
-                } catch (e) {
-                    console.error("Lỗi giải nén:", e);
-                }
-            }
-            
-            // ĐỌC DỮ LIỆU TỪ KHO TỪ VỰNG TỔNG LOCALSTORAGE
+        function loadVocabFromStorage() {
             const activeVocab = localStorage.getItem('zh_active_vocab');
             if (activeVocab && activeVocab.trim() !== "") {
                 const lines = activeVocab.split('\n').map(s => s.trim()).filter(s => s.length > 0);
@@ -579,7 +545,41 @@
             } else {
                 document.getElementById('vocabInput').value = defaultPairVocab;
             }
+        }
 
+        window.onload = function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const compressedData = urlParams.get('z');
+            const isStudent = urlParams.get('s') === '1';
+
+            if (isStudent) document.body.classList.add('student-mode');
+
+            if (compressedData && typeof LZString !== 'undefined') {
+                try {
+                    const decompressed = LZString.decompressFromEncodedURIComponent(compressedData);
+                    if (decompressed) {
+                        const data = JSON.parse(decompressed);
+                        document.getElementById('vocabInput').value = data.vocabInput || '';
+                        document.getElementById('instructionTemplate').value = data.instructionTemplate || 'Tìm ra pinyin của từ "{word}"';
+                        document.getElementById('itemsPerPage').value = data.itemsPerPage || '6';
+                        document.getElementById('fontFamily').value = data.fontFamily || "'Noto Serif SC', 'KaiTi', serif";
+                        document.getElementById('bubbleCount').value = data.bubbleCount || '10';
+                        document.getElementById('targetRepeatCount').value = data.targetRepeatCount || '3';
+                        document.getElementById('centerFontSize').value = data.centerFontSize || '70';
+                        document.getElementById('bubbleSize').value = data.bubbleSize || '44';
+                        document.getElementById('bubbleFontSize').value = data.bubbleFontSize || '16';
+
+                        generatedState = data.state || [];
+                        generateSheet(false);
+                        return;
+                    }
+                } catch (e) {
+                    console.error("Lỗi giải nén:", e);
+                }
+            }
+            
+            // Tự động tải từ kho từ localStorage
+            loadVocabFromStorage();
             generateSheet(true);
         };
     </script>
