@@ -28,7 +28,8 @@
         }
 
         .a4-page {
-            width: 210mm; min-height: 297mm; background: #ffffff; padding: 12mm 15mm;
+            width: 210mm; min-height: 297mm; background: #ffffff; 
+            padding: 18mm 15mm 12mm 15mm; /* Khoảng trống lề trên cho Header */
             box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1); margin-bottom: 25px;
             box-sizing: border-box; position: relative; page-break-after: always;
         }
@@ -36,33 +37,63 @@
         .answer-key { display: none; }
         .show-answers .answer-key { display: block !important; }
 
-        /* Style cho phần Nối từ */
         .interactive-item { cursor: pointer; transition: all 0.2s ease; }
         .interactive-item.active-select { outline: 2px solid #2563eb; background-color: #eff6ff !important; }
 
-        /* Style rõ ràng cho phần Chọn Pinyin khi CLICK CHỌN */
         .interactive-choice { cursor: pointer; transition: all 0.15s ease; user-select: none; }
         .interactive-choice.selected-choice {
-            background-color: #7c3aed !important; /* Màu tím nổi bật khi chọn */
+            background-color: #7c3aed !important;
             color: #ffffff !important;
             border-color: #6d28d9 !important;
             font-weight: bold;
-            box-shadow: 0 2px 4px rgba(124, 58, 237, 0.3);
         }
         
-        /* Trạng thái đúng / sai sau khi BẤM KIỂM TRA */
         .is-correct { background-color: #dcfce7 !important; border-color: #16a34a !important; color: #15803d !important; font-weight: bold; }
         .is-wrong { background-color: #fee2e2 !important; border-color: #dc2626 !important; color: #b91c1c !important; text-decoration: line-through; }
 
         body.student-mode .sidebar-container { display: none !important; }
         body.student-mode .preview-container { margin-left: 0 !important; padding: 10px !important; width: 100vw !important; }
 
+        /* KHUNG HEADER TÊN KHO TỪ VỰNG - HIỂN THỊ CẢ ON-SCREEN VÀ PDF */
+        .print-vocab-header {
+            position: absolute;
+            top: 6mm;
+            right: 15mm;
+            font-size: 11pt;
+            font-weight: 800;
+            color: #1e40af;
+            background-color: #dbeafe;
+            padding: 3px 10px;
+            border-radius: 4px;
+            border: 1px solid #93c5fd;
+            text-transform: uppercase;
+        }
+
         @media print {
-            body { background: #ffffff !important; }
+            body { background: #ffffff !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             .sidebar-container, .no-print, .student-actions { display: none !important; }
             .preview-container { margin-left: 0 !important; padding: 0 !important; }
-            .a4-page { box-shadow: none !important; margin: 0 !important; width: 210mm !important; border: none !important; }
-            .interactive-choice { background-color: #fff !important; color: #000 !important; }
+            .a4-page { 
+                box-shadow: none !important; 
+                margin: 0 !important; 
+                width: 210mm !important; 
+                min-height: 297mm !important;
+                border: none !important; 
+                position: relative !important; 
+                padding: 18mm 15mm 12mm 15mm !important;
+            }
+            
+            .print-vocab-header {
+                display: block !important;
+                position: absolute !important;
+                top: 8mm !important;
+                right: 15mm !important;
+                font-size: 11pt !important;
+                color: #1e3a8a !important;
+                background-color: #eff6ff !important;
+                border: 1px solid #1e3a8a !important;
+                font-weight: 800 !important;
+            }
             @page { size: A4 portrait; margin: 0; }
         }
     </style>
@@ -87,38 +118,42 @@
                 </div>
             </div>
 
+            <div class="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <label class="block text-xs font-bold uppercase tracking-wider text-blue-900 mb-1">Tên Kho Từ Vựng (In Header):</label>
+                <input type="text" id="vocabNameInput" oninput="generateSheet()" class="w-full p-2 text-sm font-bold border border-blue-300 rounded-lg text-blue-800 bg-white" placeholder="Ví dụ: YCT1-1, HSK1..." value="">
+                <p class="text-[11px] text-blue-600 mt-1">Tên này sẽ in ở góc trên bên phải trang PDF để phân biệt bài tập.</p>
+            </div>
+
             <div>
-                <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Kho từ vựng (mỗi từ 1 dòng):</label>
-                <textarea id="vocabInput" rows="6" class="w-full p-2.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 font-serif chinese-font" placeholder="你好&#10;老师&#10;学生&#10;中国&#10;越南&#10;朋友&#10;再见"></textarea>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Danh sách từ vựng (mỗi từ 1 dòng):</label>
+                <textarea id="vocabInput" oninput="autoDetectNameAndGenerate()" rows="6" class="w-full p-2.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 font-serif chinese-font" placeholder="# YCT1-1&#10;你好&#10;老师&#10;学生&#10;中国&#10;越南"></textarea>
             </div>
 
             <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-2">
                 <div>
                     <label class="block text-[11px] font-bold text-slate-700">Tiêu đề chính:</label>
-                    <input type="text" id="customTitle" class="w-full p-1.5 text-xs border border-slate-300 rounded" value="BÀI TẬP TIẾNG TRUNG">
+                    <input type="text" id="customTitle" oninput="generateSheet()" class="w-full p-1.5 text-xs border border-slate-300 rounded" value="BÀI TẬP TIẾNG TRUNG">
                 </div>
                 <div>
                     <label class="block text-[11px] font-bold text-slate-700">Hướng dẫn làm bài:</label>
-                    <input type="text" id="customSubtitle" class="w-full p-1.5 text-xs border border-slate-300 rounded" value="Hãy nối/chọn từ tiếng Trung với Pinyin tương ứng">
+                    <input type="text" id="customSubtitle" oninput="generateSheet()" class="w-full p-1.5 text-xs border border-slate-300 rounded" value="Hãy nối/chọn từ tiếng Trung với Pinyin tương ứng">
                 </div>
                 <div>
                     <label class="block text-[11px] font-bold text-slate-700">Chân trang (In ấn):</label>
-                    <input type="text" id="customFooter" class="w-full p-1.5 text-xs border border-slate-300 rounded" value="Họ và tên: ____________________    Ngày: __________">
+                    <input type="text" id="customFooter" oninput="generateSheet()" class="w-full p-1.5 text-xs border border-slate-300 rounded" value="Họ và tên: ____________________    Ngày: __________">
                 </div>
             </div>
 
             <div class="grid grid-cols-2 gap-3">
                 <div>
                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Số lượng đề:</label>
-                    <input type="number" id="quizCount" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="6" min="1" max="30">
+                    <input type="number" id="quizCount" onchange="generateSheet()" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="6" min="1" max="30">
                 </div>
                 <div id="perQuizBox">
                     <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Từ / 1 Đề nối:</label>
-                    <input type="number" id="wordsPerQuiz" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="6" min="4" max="10">
+                    <input type="number" id="wordsPerQuiz" onchange="generateSheet()" class="w-full p-2 border border-slate-300 rounded-lg text-sm" value="6" min="4" max="10">
                 </div>
             </div>
-
-            <div id="noticeBox" class="hidden p-2.5 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg text-xs"></div>
 
             <div class="pt-2 space-y-2">
                 <button onclick="generateSheet()" class="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-md transition-all">🎲 Tạo & Xáo Trộn Bài Tập</button>
@@ -134,7 +169,6 @@
 
     <script>
         let currentMode = 'match';
-        const defaultVocab = ["你好", "老师", "学生", "中国", "越南", "朋友", "再见", "谢谢", "高兴", "学习", "汉字", "苹果"];
         let selectedLeftItem = null;
 
         function switchMode(mode) {
@@ -164,7 +198,6 @@
             return '';
         }
 
-        // Thuật toán xáo trộn Fisher-Yates chuẩn
         function shuffle(arr) {
             let res = [...arr];
             for (let i = res.length - 1; i > 0; i--) {
@@ -174,7 +207,6 @@
             return res;
         }
 
-        // Đảm bảo mảng xáo trộn chắc chắn khác vị trí gốc (tránh trường hợp ngẫu nhiên trùng khớp)
         function forceShuffleDifferent(arr) {
             if (arr.length <= 1) return [...arr];
             let shuffled = shuffle(arr);
@@ -190,13 +222,47 @@
             document.getElementById('previewArea').classList.toggle('show-answers');
         }
 
+        /* HÀM TỰ ĐỘNG BÓC TÁCH TÊN KHO TỪ DÒNG ĐẦU TIÊN CỦA KHU VỰC NHẬP TỪ */
+        function autoDetectNameAndGenerate() {
+            const rawText = document.getElementById('vocabInput').value;
+            const lines = rawText.split('\n').map(s => s.trim());
+            
+            if (lines.length > 0 && (lines[0].startsWith('#') || lines[0].startsWith('//') || lines[0].toLowerCase().startsWith('kho:'))) {
+                const nameDetected = lines[0].replace(/^([#\/]+|kho:)\s*/i, '').trim();
+                if (nameDetected) {
+                    document.getElementById('vocabNameInput').value = nameDetected;
+                }
+            }
+            generateSheet();
+        }
+
+        function getActiveVocabName() {
+            let name = document.getElementById('vocabNameInput').value.trim();
+            if (name) return name;
+
+            // Kiểm tra các key trong localStorage
+            name = localStorage.getItem('zh_active_vocab_name') || 
+                   localStorage.getItem('zh_current_vocab_name') || 
+                   localStorage.getItem('zh_selected_vocab_name');
+            
+            if (name && name.trim()) {
+                document.getElementById('vocabNameInput').value = name.trim();
+                return name.trim();
+            }
+
+            return 'KHO TỪ VỰNG';
+        }
+
         function generateSheet() {
             const rawText = document.getElementById('vocabInput').value;
             const lines = rawText.split('\n').map(s => s.trim()).filter(Boolean);
 
-            if (lines.length === 0) return;
+            // Bỏ qua dòng tiêu đề kho từ nếu có ký tự # hoặc //
+            const cleanLines = lines.filter(line => !line.startsWith('#') && !line.startsWith('//') && !line.toLowerCase().startsWith('kho:'));
 
-            const parsedData = lines.map((line, idx) => {
+            if (cleanLines.length === 0) return;
+
+            const parsedData = cleanLines.map((line, idx) => {
                 const item = parseVocabLine(line);
                 return { id: idx, hanzi: item.hanzi, pinyin: item.pinyin };
             }).filter(d => d.hanzi);
@@ -210,13 +276,18 @@
             const subtitle = document.getElementById('customSubtitle').value;
             const footer = document.getElementById('customFooter').value;
 
+            // Lấy tên kho từ hiển thị lên Header
+            const vocabName = getActiveVocabName();
+
             const previewArea = document.getElementById('previewArea');
             previewArea.innerHTML = "";
 
             let page = document.createElement('div');
             page.className = 'a4-page flex flex-col justify-between';
 
+            // Khai báo cấu trúc Header chứa Tên Kho Từ
             let headerHtml = `
+                <div class="print-vocab-header">KHO TỪ: ${vocabName}</div>
                 <div class="border-b-2 border-slate-800 pb-3 mb-4 text-center">
                     <h1 class="text-2xl font-bold tracking-wide text-slate-900">${title}</h1>
                     ${subtitle ? `<p class="text-xs text-slate-600 mt-1">${subtitle}</p>` : ''}
@@ -231,7 +302,6 @@
                     const pool = shuffle(parsedData);
                     const chosen = pool.slice(0, Math.min(wordsPerQuiz, pool.length));
                     
-                    // Xáo trộn riêng biệt 2 cột để không bao giờ bị trùng hàng ngang
                     const leftCol = shuffle(chosen);
                     const rightCol = forceShuffleDifferent(chosen);
 
@@ -255,7 +325,6 @@
                         `;
                     }
 
-                    // Tạo chuỗi đáp án chính xác
                     const answers = leftCol.map((lItem, i) => {
                         const rightIdx = rightCol.findIndex(rItem => rItem.id === lItem.id);
                         return `${i + 1}→${String.fromCharCode(97 + rightIdx)}`;
@@ -275,16 +344,13 @@
                     contentGrid.appendChild(card);
                 }
             } else {
-                // Dạng 2: Chọn Pinyin (Xáo trộn ngẫu nhiên đáp án A, B, C, D)
                 const shuffledPool = shuffle(parsedData);
                 for (let q = 0; q < quizCount; q++) {
                     const target = shuffledPool[q % shuffledPool.length];
                     
-                    // Lấy các phương án sai ngẫu nhiên
                     let wrongOptions = shuffle(parsedData.filter(d => d.id !== target.id)).slice(0, 3).map(d => d.pinyin);
                     while (wrongOptions.length < 3) wrongOptions.push("—");
 
-                    // Xáo trộn vị trí của đáp án đúng trong 4 lựa chọn A, B, C, D
                     const options = shuffle([target.pinyin, ...wrongOptions]);
                     const correctIndex = options.indexOf(target.pinyin);
                     const correctChar = String.fromCharCode(65 + correctIndex);
@@ -414,12 +480,12 @@
         /* --- SAO CHÉP LINK BÀI TẬP --- */
         function generateShareLink() {
             const rawText = document.getElementById('vocabInput').value;
-            const lines = rawText.split('\n').map(s => s.trim()).filter(Boolean);
-            if (lines.length === 0) return alert("Vui lòng nhập từ vựng!");
+            if (!rawText.trim()) return alert("Vui lòng nhập từ vựng!");
 
             const config = {
                 mode: currentMode,
                 vocabText: rawText,
+                vocabName: document.getElementById('vocabNameInput').value,
                 title: document.getElementById('customTitle').value,
                 subtitle: document.getElementById('customSubtitle').value,
                 footer: document.getElementById('customFooter').value,
@@ -460,26 +526,24 @@
             document.body.removeChild(textArea);
         }
 
-        // TỰ ĐỘNG NẠP TỪ VỰNG TỪ KHO HOẶC THÔNG BÁO TỪ INDEX.HTML
         function loadVocabFromStorage() {
             const activeVocab = localStorage.getItem('zh_active_vocab');
             if (activeVocab) {
-                const input = document.getElementById('vocabInput');
-                if (input) {
-                    input.value = activeVocab;
-                    generateSheet();
-                }
+                document.getElementById('vocabInput').value = activeVocab;
             }
+            getActiveVocabName();
         }
 
-        // Đón nhận tín hiệu postMessage từ index.html khi bấm xáo trộn
+        // Đón nhận tín hiệu truyền tên kho từ vựng từ trang chính (index.html)
         window.addEventListener('message', (event) => {
             if (event.data && event.data.type === 'UPDATE_VOCAB') {
-                const input = document.getElementById('vocabInput');
-                if (input && event.data.vocab !== undefined) {
-                    input.value = event.data.vocab;
-                    generateSheet();
+                if (event.data.vocab !== undefined) {
+                    document.getElementById('vocabInput').value = event.data.vocab;
                 }
+                if (event.data.vocabName || event.data.name) {
+                    document.getElementById('vocabNameInput').value = event.data.vocabName || event.data.name;
+                }
+                autoDetectNameAndGenerate();
             }
         });
 
@@ -496,6 +560,7 @@
                     if (decompressed && decompressed.startsWith('{')) {
                         const config = JSON.parse(decompressed);
                         if (config.vocabText) document.getElementById('vocabInput').value = config.vocabText;
+                        if (config.vocabName !== undefined) document.getElementById('vocabNameInput').value = config.vocabName;
                         if (config.title !== undefined) document.getElementById('customTitle').value = config.title;
                         if (config.subtitle !== undefined) document.getElementById('customSubtitle').value = config.subtitle;
                         if (config.footer !== undefined) document.getElementById('customFooter').value = config.footer;
@@ -512,7 +577,7 @@
                 loadVocabFromStorage();
             }
 
-            generateSheet();
+            autoDetectNameAndGenerate();
         };
     </script>
 </body>
