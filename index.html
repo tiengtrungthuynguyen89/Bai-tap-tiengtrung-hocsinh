@@ -52,7 +52,7 @@
                 <!-- Danh Sách Các Kho Từ Vựng -->
                 <div id="repoCardsList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
 
-                <!-- Nút Thêm Kho Nằm Dưới Cùng (Giải quyết phiền phức khi danh sách dài) -->
+                <!-- Nút Thêm Kho Nằm Dưới Cùng -->
                 <div class="pt-4 border-t border-slate-300 flex justify-center">
                     <button onclick="openCreateModal()" class="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm shadow-md transition flex items-center gap-2">
                         <span>➕</span> Thêm Kho Từ Vựng Mới
@@ -75,7 +75,7 @@
             <h3 class="text-base font-bold text-slate-800">➕ Tạo Kho Từ Vựng Mới</h3>
             <div>
                 <label class="block text-xs font-bold text-slate-700 mb-1">Tên Kho Từ Vựng:</label>
-                <input type="text" id="newRepoName" placeholder="Ví dụ: Bài 5 - Mua Sắm..." class="w-full p-2 border border-slate-300 rounded text-xs focus:ring-2 focus:ring-blue-500 outline-none">
+                <input type="text" id="newRepoName" placeholder="Ví dụ: YCT1-1, Bài 5..." class="w-full p-2 border border-slate-300 rounded text-xs focus:ring-2 focus:ring-blue-500 outline-none">
             </div>
             <div>
                 <label class="block text-xs font-bold text-slate-700 mb-1">Danh Sách Từ Ban Đầu (Mỗi từ 1 dòng hoặc Từ:Pinyin:Nghĩa):</label>
@@ -120,20 +120,16 @@
             const curRepo = repositories.find(r => r.id === activeRepoId);
             if (curRepo) {
                 localStorage.setItem('zh_active_vocab', curRepo.vocab);
+                localStorage.setItem('zh_active_vocab_name', curRepo.name);
             }
         }
 
-        // Phát tin nhắn báo cho tất cả các iframe bài tập cập nhật & xáo trộn
-        function notifyAllIframes(vocabText) {
+        // Ép các iframe bài tập nạp lại dữ liệu mới nhất từ localStorage kèm lệnh xáo trộn
+        function reloadAllIframes() {
             const iframes = document.querySelectorAll('iframe');
             iframes.forEach(iframe => {
-                if (iframe.contentWindow) {
-                    iframe.contentWindow.postMessage({
-                        type: 'UPDATE_VOCAB',
-                        vocab: vocabText,
-                        shuffle: true
-                    }, '*');
-                }
+                const currentSrc = iframe.src.split('?')[0];
+                iframe.src = currentSrc + '?t=' + Date.now(); // Làm mới iframe để bắt buộc đọc localStorage mới
             });
         }
 
@@ -147,16 +143,8 @@
             if (tabId === 'repo') {
                 renderRepoManager();
             } else {
-                // Đảm bảo iframe nhận từ vựng mới nhất khi chuyển tab
-                const activeVocab = localStorage.getItem('zh_active_vocab') || '';
-                const iframe = document.getElementById(`tab-${tabId}`);
-                if (iframe && iframe.contentWindow) {
-                    iframe.contentWindow.postMessage({
-                        type: 'UPDATE_VOCAB',
-                        vocab: activeVocab,
-                        shuffle: true
-                    }, '*');
-                }
+                // Đảm bảo cập nhật trạng thái mới nhất trước khi hiển thị tab bài tập
+                saveState();
             }
         }
 
@@ -191,9 +179,6 @@
             if (r) {
                 r.vocab = val;
                 saveState();
-                if (id === activeRepoId) {
-                    notifyAllIframes(val);
-                }
             }
         }
 
@@ -201,11 +186,8 @@
             activeRepoId = id;
             saveState();
             renderRepoManager();
-            const curRepo = repositories.find(r => r.id === id);
-            if (curRepo) {
-                notifyAllIframes(curRepo.vocab);
-            }
-            alert("✅ Đã kích hoạt kho từ vựng và gửi lệnh xáo trộn sang toàn bộ các tab bài tập!");
+            reloadAllIframes(); // Làm mới các iframe để nạp từ mới và xáo trộn ngay lập tức
+            alert("✅ Đã áp dụng kho từ vựng và tự động xáo trộn toàn bộ bài tập!");
         }
 
         function deleteRepo(id) {
@@ -223,7 +205,7 @@
             }
         }
 
-        /* MODAL CẤU HÌNH THÊM MỚI KHÔ */
+        /* MODAL THÊM MỚI KHO */
         function openCreateModal() {
             document.getElementById('newRepoName').value = '';
             document.getElementById('newRepoVocab').value = '';
@@ -246,11 +228,14 @@
             }
 
             const newId = 'repo_' + Date.now();
-            repositories.push({ id: newId, name: name, vocab: vocab || "你好\n谢谢" });
+            const newRepo = { id: newId, name: name, vocab: vocab || "你好\n谢谢" };
+            repositories.push(newRepo);
+            
             activeRepoId = newId;
             saveState();
             closeCreateModal();
             renderRepoManager();
+            reloadAllIframes(); // Tự động nạp sang tất cả bài tập
 
             // Tự động cuộn xuống thẻ vừa thêm
             setTimeout(() => {
